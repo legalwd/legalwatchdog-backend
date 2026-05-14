@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title>{% block title %}Legal Watchdog{% endblock %}</title>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: "Inter", Arial, sans-serif;
+      background-color: #f8f5f1;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    table {
+      border-spacing: 0;
+      border-collapse: collapse;
+    }
+
+    img {
+      border: 0;
+      display: block;
+      outline: none;
+      text-decoration: none;
+    }
+
+    a {
+      text-decoration: none;
+    }
+
+    .container {
+      max-width: 445px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    @media only screen and (max-width: 600px) {
+      .container {
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+
+      .header-img {
+        width: 80% !important;
+        max-width: 445px !important;
+        height: auto !important;
+      }
+
+      .main-heading {
+        font-size: 28px !important;
+        line-height: 36px !important;
+      }
+
+      .social-icon {
+        padding: 0 8px !important;
+      }
+
+      .main-content {
+        padding: 40px 32px !important;
+      }
+    }
+  </style>
+</head>
+
+<body style="margin: 0; padding: 0; background-color: #f8f5f1">
+  <!-- Preheader Text -->
+  <div style="
+        display: none;
+        font-size: 1px;
+        color: #f8f5f1;
+        line-height: 1px;
+        max-height: 0;
+        max-width: 0;
+        opacity: 0;
+        overflow: hidden;
+      ">
+    {% block preheader %}{% endblock %}
+  </div>
+  <!-- Main Container -->
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+    <tr>
+      <td>
+        <table role="presentation" class="container" width="600" cellspacing="0" cellpadding="0" border="0"
+          align="center" style="
+              max-width: 600px;
+              width: 100%;
+              background-color: #f8f5f1;
+            ">
+          <tr>
+            <td class="main-content" style="padding: 40px 32px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                <!-- Header -->
+                {% block header %} {% endblock %}
+
+                <!-- Content Body -->
+                <tr>
+                  <td>
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      {% block content_body %}{% endblock %}
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- CTA Button -->
+                {% block cta_section %} {% endblock %}
+
+                <!-- Footer Brand Section -->
+                {% block footer %}
+                <tr>
+                  <td style="padding: 0">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="position: relative; overflow: hidden">
+                          <img src="https://minio.legalwatch.dog/email-templates/static/footer-text.png"
+                            alt="LegalWatchDog helps us track cross-border regulation updates in hours, not weeks"
+                            width="520px" height="252px" style="display: block; max-width: 100%; height: auto;" />
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>
+                          <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="left" style="
+                                margin-bottom: 26px;
+                                margin-top: 26px;
+                                display: block;
+                              ">
+                            <tr>
+                              <td style="padding: 0 12px 0 0">
+                                <a href="{{ SOCIAL_FACEBOOK }}" target="_blank" rel="noopener noreferrer">
+                                  <img src="https://minio.legalwatch.dog/email-templates/static/facebook.png"
+                                    alt="facebook icon" width="20px" height="20px" style="display: block" />
+                                </a>
+                              </td>
+                              <td style="padding: 0 12px">
+                                <a href="{{ SOCIAL_TWITTER }}" target="_blank" rel="noopener noreferrer">
+                                  <img src="https://minio.legalwatch.dog/email-templates/static/twitter.png"
+                                    alt="twitter logo" width="20px" height="20px" style="display: block" />
+                                </a>
+                              </td>
+                              <td style="padding: 0 12px">
+                                <a href="{{ SOCIAL_INSTAGRAM }}" target="_blank" rel="noopener noreferrer">
+                                  <img src="https://minio.legalwatch.dog/email-templates/static/instagram.png"
+                                    alt="instagram logo" width="20px" height="20px" style="display: block" />
+                                </a>
+                              </td>
+                              <td style="padding: 0 12px">
+                                <a href="{{ SOCIAL_LINKEDIN }}" target="_blank" rel="noopener noreferrer">
+                                  <img src="https://minio.legalwatch.dog/email-templates/static/linkedin.png"
+                                    alt="linkedin logo" width="20px" height="20px" style="display: block" />
+                                </a>
+                              </td>
+                              <td style="padding: 0 12px">
+                                <a href="{{ SOCIAL_YOUTUBE }}" target="_blank" rel="noopener noreferrer">
+                                  <img src="https://minio.legalwatch.dog/email-templates/static/youtube.png"
+                                    alt="youtube icon" width="20px" height="20px" style="display: block" />
+                                </a>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>
+                          <p style="
+                                margin: 0;
+                                font-size: 14px;
+                                color: #3c2610;
+                                line-height: 22px;
+                              ">
+                            Copyright © {{ current_year() | default('2025') }}
+                            LegalWatchDog | All Rights Reserved
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                {% endblock %}
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+
+</html>

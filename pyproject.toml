@@ -1,0 +1,139 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "legal-watch-dog-be"
+version = "0.1.0"
+description = "AI-powered monitoring platform for tracking global regulatory and policy changes for enterprises."
+readme = "README.md"
+requires-python = ">=3.12"
+
+dependencies = [
+    "aio-pika>=8.3.0",
+    "aiosmtplib>=5.0.0",
+    "aiosqlite>=0.21.0",
+    "alembic>=1.17.2",
+    "anyio>=4.11.0",
+    "asyncer>=0.0.17",
+    "asyncpg>=0.30.0",
+    "bcrypt>=5.0.0",
+    "beautifulsoup4>=4.14.2",
+    "celery>=5.4.0",
+    "cloudscraper>=1.2.71",
+    "cryptography>=46.0.0",
+    "email-validator>=2.3.0",
+    "fastapi[standard]>=0.121.2",
+    "flower>=2.0.1",
+    "google-generativeai>=0.8.3",
+    "httpx[http2]>=0.28.1",
+    "jinja2>=3.1.6",
+    "loguru>=0.7.3",
+    "lxml>=6.0.2",
+    "minio>=7.2.18",
+    "markdownify>=1.2.2",
+    "markdown>=3.7",
+    "pdfplumber>=0.11.8",
+    "playwright>=1.56.0",
+    "psycopg2-binary>=2.9.11",
+    "pydantic[email]>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "pyjwt>=2.8.0",
+    "python-dateutil>=2.9.0",
+    "python-decouple>=3.8",
+    "python-dotenv>=1.2.1",
+    "python-jose>=3.5.0",
+    "python-multipart>=0.0.20",
+    "pyyaml>=6.0.3",
+    "readability-lxml>=0.8.4.1",
+    "redis>=5.0.0",
+    "stripe>=5.0.0",
+    "sqlalchemy>=2.0.44",
+    "sqlmodel>=0.0.27",
+    "uvicorn[standard]>=0.38.0",
+    "pre-commit>=4.4.0",
+    "msal>=1.34.0",
+    "phonenumbers>=9.0.19",
+    "pytest-asyncio>=1.3.0",
+    "aiosmtplib>=5.0.0",
+    "ruff>=0.9.0",
+    "aio-pika>=8.3.0",
+    "google-generativeai>=0.3.0",
+    "cloudscraper>=1.2.71",
+    "pdfplumber>=0.11.8",
+    "playwright>=1.56.0",
+    "uvicorn[standard]>=0.38.0",
+    "stripe>=14.0.1",
+    "google-auth>=2.43.0",
+    "google-auth-oauthlib>=1.2.2",
+    "itsdangerous>=2.2.0",
+    "authlib>=1.6.5",
+    "tavily-python>=0.7.13",
+    "passlib>=1.7.4",
+    "openai>=1.30.0",
+    "pycountry>=24.6.1",
+    "gevent>=25.9.1",
+    "click>=8.3.0",
+    "asgiref>=3.11.0",
+    "instructor>=1.7.0",
+    "nltk>=3.9.2",
+    "sitemapy>=0.2.3",
+    "asyncer>=0.0.17",
+    "parallel-web>=0.3.4",
+    "sse-starlette>=3.3.2",
+    "nest-asyncio>=1.6.0",
+]
+
+
+[dependency-groups]
+dev = [
+    "coverage>=7.11.3",
+    "httpx>=0.28.1",
+    "pre-commit>=4.4.0",
+    "pytest>=9.0.1",
+    "pytest-asyncio>=1.3.0",
+    "pytest-cov>=7.0.0",
+    "pytest-env>=1.1.3",
+    "pytest-xdist>=3.6.1",
+    "ruff==0.14.5",
+    "tox>=4.32.0"
+]
+
+[tool.setuptools]
+packages = ["app", "alembic"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+exclude = [
+    "alembic/versions/*",
+    "alembic/env.py",
+    "scripts/**",
+    "app/api/core/dependencies/email/templates/**",
+]
+extend-exclude = ["pyproject.toml"]  
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+
+[tool.pytest.ini_options]
+env = ["ENV_FILE=.env.test"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
+
+[tool.poetry.dependencies]
+aio-pika = "^8.3.0"
+google-genai = "^0.3.0"
+google-generativeai = "^0.3.0"
+
+line-ending = "auto"

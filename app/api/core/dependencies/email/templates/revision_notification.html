@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}New Change Detected: {{ source_name }}{% endblock %}
+
+{% block preheader %}Important changes detected in {{ source_name }} - review required.{% endblock %}
+
+{% block header %}
+<tr>
+  <td align="center" style="padding: 40px 0 30px 0;">
+    <table border="0" cellpadding="0" cellspacing="0" role="presentation">
+      <tr>
+        <td align="center" style="vertical-align: middle;">
+          <img src="https://minio.legalwatch.dog/email-templates/static/logo.png" alt="WatchDog Logo" width="50"
+            style="display: block; border: 0;">
+        </td>
+        <td style="padding-left: 10px; vertical-align: middle;">
+          <span
+            style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 28px; font-weight: 700; color: #3E2723; line-height: 1;">WatchDog</span>
+        </td>
+      </tr>
+    </table>
+  </td>
+</tr>
+{% endblock %}
+
+{% block content_body %}
+<tr>
+  <td style="padding: 0 40px 30px 40px; background-color: #F9F7F5;">
+    <p
+      style="margin: 0 0 20px 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 18px; font-weight: 700; color: #121110;">
+      Hello {{ user_name }},
+    </p>
+
+    <p
+      style="margin: 0 0 25px 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; color: #666666; line-height: 1.6;">
+      A change has been detected in the regulation you're monitoring:
+    </p>
+
+    <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="width: 100%; margin-bottom: 25px;">
+      <tr>
+        <td style="padding-bottom: 8px;">
+          <span
+            style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 15px; color: #888888;">Regulation:</span>
+          <span
+            style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 15px; font-weight: 700; color: #121110;">{{
+            source_name }}</span>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding-bottom: 15px;">
+          <span
+            style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 15px; color: #888888;">Jurisdiction:</span>
+          <span
+            style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 15px; font-weight: 700; color: #121110;">{{
+            jurisdiction_name }}</span>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding-bottom: 8px;">
+          <span
+            style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 15px; color: #888888;">Summary:</span>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding-bottom: 25px;">
+          <div
+            style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; font-weight: 600; color: #121110; line-height: 1.5;">
+            {{ ai_summary }}
+          </div>
+        </td>
+      </tr>
+
+      {% if changes and changes|length > 0 %}
+      <tr>
+        <td style="padding-bottom: 10px;">
+          <span
+            style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 15px; color: #888888;">Key
+            Changes:</span>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <ul
+            style="margin: 0; padding-left: 20px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 15px; color: #121110; line-height: 1.6;">
+            {% for change in changes %}
+            <li style="margin-bottom: 8px;">
+              <strong>{{ change.field }}</strong>:
+              {% if change.description %}
+              {{ change.description }}
+              {% else %}
+              Changed from <span style="color: #c14e32;">{{ change.old_value }}</span> to <span
+                style="color: #2E7D32;">{{ change.new_value }}</span>
+              {% endif %}
+            </li>
+            {% endfor %}
+
+            {% if risk_level %}
+            <li style="margin-top: 10px; list-style: none; margin-left: -20px;">
+              <span
+                style="display: inline-block; background-color: #F0EBE7; color: #3E2723; padding: 4px 10px; border-radius: 4px; font-size: 13px; font-weight: 700;">Risk
+                Level: {{ risk_level }}</span>
+            </li>
+            {% endif %}
+          </ul>
+        </td>
+      </tr>
+      {% endif %}
+    </table>
+
+    <!-- Call to Action -->
+    {% if action_url %}
+    <p
+      style="margin: 0 0 15px 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 15px; color: #666666;">
+      Click below to read full details
+    </p>
+    <table border="0" cellpadding="0" cellspacing="0" role="presentation">
+      <tr>
+        <td align="left" bgcolor="#401903" style="border-radius: 4px;">
+          <a href="{{ action_url }}" target="_blank"
+            style="padding: 12px 24px; border: 1px solid #401903; border-radius: 4px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; color: #ffffff; text-decoration: none; font-weight: bold; display: inline-block;">
+            View Full Update
+          </a>
+        </td>
+      </tr>
+    </table>
+    {% endif %}
+
+    <p
+      style="margin: 30px 0 0 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 15px; color: #666666;">
+      LegalWatchDog Team.
+    </p>
+  </td>
+</tr>
+{% endblock %}
+
+{% block cta_section %}
+<!-- CTA removed from standard block as it is now integrated in content -->
+{% endblock %}

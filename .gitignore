@@ -1,0 +1,133 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+*.db
+*.egg
+*.egg-info/
+dist/
+build/
+*.log
+*.pot
+*.swp
+*.swo
+*.DS_Store
+__pypackages__/
+
+# Virtual environments
+.venv/
+env/
+venv/
+ENV/
+.venv-linux/
+.venv-wsl/
+.env
+
+# VSCode
+.history/
+*.code-workspace
+
+# JetBrains IDEs (PyCharm, IntelliJ)
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pytest
+.pytest_cache/
+
+# Coverage reports
+.coverage
+.coverage.*
+htmlcov/
+*.cover
+*.py,cover
+*.gcov
+*.gcda
+*.gcno
+
+# Logs
+*.log
+logs/
+*.out
+
+# MacOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# SQLite
+*.sqlite
+*.sqlite3
+*.sqlite3-journal
+
+# Alembic
+alembic/versions/*.pyc
+
+# Poetry/UV
+pyproject.toml.lock
+poetry.lock
+__pypackages__/
+
+# Ruff cache
+.ruff_cache/
+
+dump.rdb
+# Environment files
+.env.dev
+.env.prod
+.env.stage
+.env.test
+ecosystem.config.js
+start_app.sh
+
+
+.github/instructions/
+
+# Celery Beat Scheduler files
+celerybeat-schedule.*
+celerybeat-schedule
+
+# Docker (local development only - not used by team)
+docker-compose.yml
+docker-compose.*.yml
+Dockerfile
+.dockerignore
+.docker/
+docker-start.sh
+docker-rebuild.sh
+.env.docker
+DOCKER_README.md
+
+# Docker volumes
+postgres_data/
+minio_data/
+redis_data/
+
+.agent/
+.agents/
+# Blog artifacts (local testing)
+blog-artifacts/
+/var/www/blog-static/
+
+# NLTK downloaded data
+nltk_data/
+
+.copilot-tracking/
+public/
+temp_auto_push.bat
+temp_interactive_push.bat
+.gitignore

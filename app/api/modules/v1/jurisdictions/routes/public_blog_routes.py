@@ -1,0 +1,248 @@
+"""Public (unauthenticated) blog post endpoints.
+
+Exposes published blog posts for consumption by:
+- FE ViteSSG build pipeline (fetches at build time to pre-render routes)
+- SEO crawlers and indexing tools
+- RSS feed generators (future)
+- Any other public consumers
+
+Routes:
+    GET /blog/posts          - List all published blog posts (paginated)
+    GET /blog/posts/{slug}   - Get a single published post by slug
+"""
+
+import logging
+
+from fastapi import APIRouter, Depends, Query, status
+from fastapi.responses import RedirectResponse
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from app.api.core.custom_exceptions.exceptions import ResourceNotFoundError
+from app.api.db.database import get_db
+from app.api.modules.v1.jurisdictions.models.jurisdiction_blog_post import JurisdictionBlogPost
+from app.api.modules.v1.jurisdictions.models.jurisdiction_model import Jurisdiction
+from app.api.modules.v1.jurisdictions.schemas.blog_schema import PublicBlogPostResponse
+from app.api.modules.v1.jurisdictions.service.blog_artifact_service import (
+    build_legacy_resource_path,
+    build_public_resource_url,
+)
+from app.api.modules.v1.jurisdictions.service.blog_generation_service import BlogGenerationService
+from app.api.utils.pagination import calculate_pagination
+from app.api.utils.response_payloads import success_response
+
+router = APIRouter(
+    prefix="/blog",
+    tags=["Public Blog"],
+)
+
+logger = logging.getLogger(__name__)
+
+
+async def _build_public_payload(db: AsyncSession, post: JurisdictionBlogPost) -> dict:
+    """Build public response payload with canonical navigation URL fields.
+
+    Args:
+        db: Database session.
+        post: Published blog post model.
+
+    Returns:
+        dict: Public API payload including canonical URL metadata.
+
+    Examples:
+        >>> payload = await _build_public_payload(db, post)
+        >>> payload["public_url"].startswith("https://")
+        True
+    """
+    jurisdiction_stmt = (
+        select(Jurisdiction)
+        .options(selectinload(Jurisdiction.project))
+        .where(Jurisdiction.id == post.jurisdiction_id)
+    )
+    jurisdiction_result = await db.execute(jurisdiction_stmt)
+    jurisdiction = jurisdiction_result.scalar_one_or_none()
+
+    if jurisdiction:
+        resource_path = await BlogGenerationService._build_public_resource_path(
+            db,
+            jurisdiction,
+            post,
+        )
+    else:
+        resource_path = build_legacy_resource_path(post.slug)
+
+    payload = PublicBlogPostResponse.model_validate(post).model_dump()
+    payload["resource_path"] = resource_path
+    payload["public_url"] = build_public_resource_url(resource_path)
+    return payload
+
+
+@router.get(
+    "/posts",
+    status_code=status.HTTP_200_OK,
+)
+async def list_published_blog_posts(
+    page: int = Query(default=1, ge=1, description="Page number"),
+    limit: int = Query(default=20, ge=1, le=100, description="Items per page"),
+    db: AsyncSession = Depends(get_db),
+):
+    """List all published blog posts.
+
+    Returns paginated published blog posts with metadata and pre-rendered HTML.
+    Used by the FE build pipeline to discover slugs and fetch content at SSG
+    build time.
+
+    No authentication required — this is a public endpoint.
+
+    Args:
+        page: Page number (1-indexed).
+        limit: Items per page (1-100).
+        db: Database session.
+
+    Returns:
+        JSONResponse: Paginated list of published blog posts.
+
+    Examples:
+        >>> GET /api/v1/blog/posts?page=1&limit=20
+        >>> # Returns published posts with content_html, slug, SEO metadata
+    """
+    from sqlalchemy import func
+
+    count_stmt = (
+        select(func.count())
+        .select_from(JurisdictionBlogPost)
+        .where(JurisdictionBlogPost.is_published.is_(True))
+    )
+    count_result = await db.execute(count_stmt)
+    total = count_result.scalar() or 0
+
+    posts_stmt = (
+        select(JurisdictionBlogPost)
+        .where(JurisdictionBlogPost.is_published.is_(True))
+        .order_by(JurisdictionBlogPost.published_at.desc())
+        .offset((page - 1) * limit)
+        .limit(limit)
+    )
+    posts_result = await db.execute(posts_stmt)
+    posts = posts_result.scalars().all()
+
+    posts_data = []
+    for post in posts:
+        posts_data.append(await _build_public_payload(db, post))
+
+    pagination = calculate_pagination(total, page, limit)
+
+    return success_response(
+        status_code=status.HTTP_200_OK,
+        message="Published blog posts retrieved successfully",
+        data={"items": posts_data, "pagination": pagination},
+    )
+
+
+@router.get(
+    "/posts/{slug}",
+    status_code=status.HTTP_200_OK,
+)
+async def get_published_blog_post_by_slug(
+    slug: str,
+    redirect_to_public_url: bool = Query(
+        default=False,
+        description="Set true to redirect to canonical public URL",
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get a single published blog post by slug.
+
+    Returns the full blog post including `content_html` for direct use in
+    page templates. Only published posts are returned — draft posts return 404.
+
+    No authentication required — this is a public endpoint.
+
+    Args:
+        slug: URL-safe slug (e.g., "eor-guide-california").
+        db: Database session.
+
+    Returns:
+        JSONResponse: Full published blog post with content_html and SEO metadata.
+
+    Raises:
+        ResourceNotFoundError: If slug does not exist or post is not published.
+
+    Examples:
+        >>> GET /api/v1/blog/posts/eor-guide-california
+        >>> # Returns full post with content_html ready for SSG template injection
+    """
+    stmt = select(JurisdictionBlogPost).where(
+        JurisdictionBlogPost.slug == slug,
+        JurisdictionBlogPost.is_published.is_(True),
+    )
+    result = await db.execute(stmt)
+    post = result.scalar_one_or_none()
+
+    if not post:
+        raise ResourceNotFoundError(message="Blog post not found")
+
+    payload = await _build_public_payload(db, post)
+
+    if redirect_to_public_url:
+        return RedirectResponse(
+            url=payload["public_url"],
+            status_code=status.HTTP_307_TEMPORARY_REDIRECT,
+        )
+
+    return success_response(
+        status_code=status.HTTP_200_OK,
+        message="Blog post retrieved successfully",
+        data=payload,
+    )
+
+
+@router.get(
+    "/resources/{resource_path:path}",
+    status_code=status.HTTP_200_OK,
+)
+async def get_published_blog_post_by_resource_path(
+    resource_path: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get a single published blog post by canonical resource path.
+
+    Args:
+        resource_path: Canonical resource path without host.
+        db: Database session.
+
+    Returns:
+        JSONResponse: Full published blog post with canonical URL metadata.
+
+    Raises:
+        ResourceNotFoundError: If no published post matches path.
+
+    Examples:
+        >>> GET /api/v1/blog/resources/resources/eor/my-country/eor-guide-my-country
+    """
+    normalized_path = resource_path.strip("/")
+    path_segments = [segment for segment in normalized_path.split("/") if segment]
+    if not path_segments:
+        raise ResourceNotFoundError(message="Blog post not found")
+
+    slug = path_segments[-1]
+    stmt = select(JurisdictionBlogPost).where(
+        JurisdictionBlogPost.slug == slug,
+        JurisdictionBlogPost.is_published.is_(True),
+    )
+    result = await db.execute(stmt)
+    post = result.scalar_one_or_none()
+
+    if not post:
+        raise ResourceNotFoundError(message="Blog post not found")
+
+    payload = await _build_public_payload(db, post)
+    if payload["resource_path"].strip("/") != normalized_path:
+        raise ResourceNotFoundError(message="Blog post not found")
+
+    return success_response(
+        status_code=status.HTTP_200_OK,
+        message="Blog post retrieved successfully",
+        data=payload,
+    )

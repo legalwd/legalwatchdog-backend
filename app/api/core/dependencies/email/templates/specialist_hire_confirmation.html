@@ -1,0 +1,97 @@
+{% extends "base.html" %} {% block title %}Request Received - Legal
+Watchdog{% endblock %} {% block preheader %}Your specialist request has been received.{% endblock %} {% block header %}
+<tr>
+  <td>
+    <div style="text-align: center; padding: 42px 28px; margin-bottom: 30px">
+      <img
+        src="https://minio.legalwatch.dog/email-templates/static/logo.png"
+        alt="Legal WatchDog logo"
+        style="width: 60px; display: inline-block; vertical-align: middle"
+      />
+      <p
+        style="
+          margin: 0;
+          margin-left: 10px;
+          font-size: 30px;
+          font-weight: 700;
+          color: #401903;
+          line-height: 38px;
+          display: inline-block;
+          vertical-align: middle;
+        "
+      >
+        WatchDog
+      </p>
+    </div>
+  </td>
+</tr>
+{% endblock %} {% block content_body %}
+<tr>
+  <td style="padding-bottom: 20px">
+    <p
+      style="
+        margin: 0;
+        font-size: 24px;
+        font-weight: 500;
+        color: #121110;
+        line-height: 28px;
+      "
+    >
+      Request Received
+    </p>
+  </td>
+</tr>
+<tr>
+  <td style="padding-bottom: 20px">
+    <p style="margin: 0; font-size: 16px; color: #706c69; line-height: 24px">
+      Thank you for reaching out, <strong>{{ company_name }}</strong>! We have received your specialist request.
+    </p>
+  </td>
+</tr>
+<tr>
+  <td style="padding-bottom: 30px">
+    <table style="width: 100%; border-collapse: collapse; border-radius: 8px">
+      <tr>
+        <td style="padding: 12px 20px 12px 0px">
+          <p
+            style="
+              margin: 0 0 8px 0;
+              font-size: 14px;
+              font-weight: 600;
+              color: #121110;
+            "
+          >
+            Submitted At
+          </p>
+          <p style="margin: 0; font-size: 16px; color: #706c69">
+            {{ submitted_at }}
+          </p>
+        </td>
+      </tr>
+    </table>
+  </td>
+</tr>
+<tr>
+  <td style="padding-bottom: 20px">
+    <p style="margin: 0; font-size: 16px; color: #706c69; line-height: 24px">
+      Our team will review your request and get back to you within 1-2 business days. 
+      We're excited to help connect you with the right immigration and global mobility specialists.
+    </p>
+  </td>
+</tr>
+<tr>
+  <td style="padding-bottom: 20px">
+    <p style="margin: 0; font-size: 16px; color: #706c69; line-height: 24px">
+      If you have any urgent questions, feel free to reply to this email.
+    </p>
+  </td>
+</tr>
+{% endblock %} {% block cta_section %}
+<tr>
+  <td style="padding-bottom: 84px; text-align: center">
+    <p style="margin: 0; font-size: 14px; color: #a09a95; line-height: 20px">
+      Thank you for choosing Legal WatchDog!
+    </p>
+  </td>
+</tr>
+{% endblock %}

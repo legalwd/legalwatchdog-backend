@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}We Received Your Demo Request - {{ APP_NAME }}{% endblock %}
+{% block preheader %}Thanks for requesting a demo. We'll be in touch shortly.{% endblock %}
+
+{% block header %}
+<tr>
+  <td>
+    <div style="text-align: center; padding: 42px 28px; margin-bottom: 30px">
+      <img
+        src="https://minio.legalwatchdog.com/email-templates/static/logo.png"
+        alt="{{ APP_NAME }} logo"
+        style="width: 60px; display: inline-block; vertical-align: middle"
+      />
+      <p
+        style="
+          margin: 0;
+          margin-left: 10px;
+          font-size: 30px;
+          font-weight: 700;
+          color: #401903;
+          line-height: 38px;
+          display: inline-block;
+          vertical-align: middle;
+        "
+      >
+        {{ APP_NAME }}
+      </p>
+    </div>
+  </td>
+</tr>
+{% endblock %}
+
+{% block content_body %}
+<tr>
+  <td style="padding-bottom: 20px">
+    <p
+      style="
+        margin: 0;
+        font-size: 24px;
+        font-weight: 500;
+        color: #121110;
+        line-height: 28px;
+      "
+    >
+      Hi {{ first_name }} {{ last_name }},
+    </p>
+  </td>
+</tr>
+<tr>
+  <td style="padding-bottom: 20px">
+    <p style="margin: 0; font-size: 16px; color: #706c69; line-height: 24px">
+      Thanks for your interest in a demo of {{ company_name }}'s Legal
+      WatchDog workspace. We've received your request and our team will reach
+      out shortly to schedule a time that works best for you.
+    </p>
+  </td>
+</tr>
+<tr>
+  <td style="padding-bottom: 20px">
+    <p style="margin: 0; font-size: 16px; color: #706c69; line-height: 24px">
+      During the demo, we'll walk you through how Legal WatchDog helps legal
+      and compliance teams monitor regulatory changes, stay ahead of emerging
+      risks, and keep your organization compliant.
+    </p>
+  </td>
+</tr>
+<tr>
+  <td style="padding-bottom: 20px">
+    <p style="margin: 0; font-size: 16px; color: #706c69; line-height: 24px">
+      If there are specific topics or use cases you'd like us to cover, feel
+      free to reply to this email and let us know.
+    </p>
+  </td>
+</tr>
+{% endblock %}
+
+{% block cta_section %}
+<tr>
+  <td style="padding-bottom: 84px; text-align: center">
+    <a
+      href="mailto:{{ APP_URL }}"
+      style="
+        display: inline-block;
+        padding: 20px 32px;
+        background-color: #401903;
+        color: #ffffff;
+        font-size: 16px;
+        font-weight: 600;
+        border-radius: 8px;
+        text-decoration: none;
+        line-height: 24px;
+      "
+    >
+      Visit {{ APP_NAME }}
+    </a>
+  </td>
+</tr>
+{% endblock %}

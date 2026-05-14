@@ -1,0 +1,123 @@
+{% extends "base.html" %} {% block title %} You're on the Waitlist - Legal
+Watchdog {% endblock %} {% block preheader %} {{ preheader_text |
+default("Thanks for joining the Legal WatchDog waitlist. You're now in line for
+early access.") }} {% endblock %} {% block header %}
+<tr>
+  <td>
+    <div
+      style="
+        background: linear-gradient(
+          180deg,
+          #ffeede 0%,
+          #fff7ef 55%,
+          #ffffff33 100%
+        );
+        text-align: center;
+        padding: 42px 28px;
+      "
+    >
+      <img
+        src="https://minio.legalwatch.dog/email-templates/static/email-hero.png"
+        alt="Joyful Legal WatchDog customer holding an envelope with letters floating around"
+        style="
+          width: 320px;
+          max-width: 100%;
+          height: auto;
+          display: block;
+          margin: 0 auto 52px;
+        "
+      />
+      <h1
+        style="
+          margin: 0;
+          font-size: 30px;
+          font-weight: 700;
+          color: #1f1f1f;
+          line-height: 38px;
+        "
+      >
+        You're on the Waitlist
+      </h1>
+    </div>
+  </td>
+</tr>
+{% endblock %} {% block content_body %}
+<tr>
+  <td style="padding-bottom: 8px">
+    <p
+      style="
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+        color: #1f1f1f;
+        line-height: 26px;
+      "
+    >
+      Hello {{ first_name | default("there") }},
+    </p>
+  </td>
+</tr>
+<tr>
+  <td>
+    <p
+      style="
+        margin: 0 0 19px;
+        font-size: 15px;
+        color: #3f342d;
+        line-height: 24px;
+      "
+    >
+      Thanks for joining the Legal WatchDog waitlist. Your request has been
+      received and you're now in line for early access.
+    </p>
+    <p
+      style="
+        margin: 0 0 19px;
+        font-size: 15px;
+        color: #3f342d;
+        line-height: 24px;
+      "
+    >
+      We're building a dedicated compliance platform that helps teams monitor
+      regulatory changes, manage jurisdictions, and strengthen oversight across
+      their organization. You'll be among the first to try it when we open
+      access.
+    </p>
+    <p
+      style="
+        margin: 0 0 32px;
+        font-size: 15px;
+        color: #3f342d;
+        line-height: 24px;
+      "
+    >
+      We'll share updates, early release dates, and onboarding details as we get
+      closer. If you have any questions, reply directly to this email. We'd love
+      to hear from you.
+    </p>
+  </td>
+</tr>
+{% endblock %} {% block cta_section %}
+<tr>
+  <td style="padding-bottom: 84px; text-align: center">
+    <a
+      href="{{ APP_URL }}"
+      target="_blank"
+      rel="noopener noreferrer"
+      style="
+        display: inline-block;
+        padding: 20px 32px;
+        background-color: #401903;
+        color: #ffffff;
+        font-size: 16px;
+        font-weight: 600;
+        border-radius: 8px;
+        text-decoration: none;
+        line-height: 24px;
+      "
+    >
+      Visit Website
+    </a>
+  </td>
+</tr>
+{% endblock %}

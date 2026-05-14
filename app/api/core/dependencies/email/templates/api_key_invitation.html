@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Activate Your API Key - Legal WatchDog{% endblock %}
+
+{% block preheader %}Your new API key from {{ organization_name }} on Legal WatchDog.{% endblock %}
+
+{% block content_body %}
+<tr>
+  <td style="padding: 20px 0;">
+    <p style="font-size: 18px; color: #121110; line-height: 24px; margin: 0;">
+      Hello {{ user_name }},
+    </p>
+    <p style="font-size: 16px; color: #706C69; line-height: 24px; margin: 16px 0 0 0;">
+      <strong>{{ organization_name }}</strong> has issued you a new API key on Legal WatchDog.
+      Click the link below to activate and configure it:
+    </p>
+    <p style="margin: 16px 0 0 0;">
+      <a href="{{ onboarding_url }}" style="color: #C14E32; text-decoration: none;">
+        {{ onboarding_url }}
+      </a>
+    </p>
+    <p style="font-size: 16px; color: #706C69; line-height: 24px; margin: 16px 0 0 0;">
+      Cheers,<br>
+      The Legal WatchDog Team
+    </p>
+  </td>
+</tr>
+{% endblock %}

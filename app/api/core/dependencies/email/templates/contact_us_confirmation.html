@@ -1,0 +1,116 @@
+{% extends "base.html" %} {% block title %}We Received Your Message - Legal
+Watchdog{% endblock %} {% block preheader %}Thanks for reaching out. We'll get
+back to you soon.{% endblock %} {% block header %}
+<tr>
+  <td>
+    <div style="text-align: center; padding: 42px 28px; margin-bottom: 30px">
+      <img
+        src="https://minio.legalwatch.dog/email-templates/static/logo.png"
+        alt="Legal WatchDog logo"
+        style="width: 60px; display: inline-block; vertical-align: middle"
+      />
+      <p
+        style="
+          margin: 0;
+          margin-left: 10px;
+          font-size: 30px;
+          font-weight: 700;
+          color: #401903;
+          line-height: 38px;
+          display: inline-block;
+          vertical-align: middle;
+        "
+      >
+        WatchDog
+      </p>
+    </div>
+  </td>
+</tr>
+{% endblock %} {% block content_body %}
+<tr>
+  <td style="padding-bottom: 20px">
+    <p
+      style="
+        margin: 0;
+        font-size: 24px;
+        font-weight: 500;
+        color: #121110;
+        line-height: 28px;
+      "
+    >
+      Hello {{ full_name }},
+    </p>
+  </td>
+</tr>
+<tr>
+  <td style="padding-bottom: 20px">
+    <p style="margin: 0; font-size: 16px; color: #706c69; line-height: 24px">
+      Thanks for contacting {{ APP_NAME }}. Your message has been received and
+      we'll get back to you as soon as possible.
+    </p>
+  </td>
+</tr>
+<tr>
+  <td style="padding-bottom: 20px">
+    <p style="margin: 0; font-size: 16px; color: #706c69; line-height: 24px">
+      Our team typically responds within 24-48 hours during business days. We'll
+      review your inquiry and provide you with the information you need.
+    </p>
+  </td>
+</tr>
+<tr>
+  <td style="padding-bottom: 30px">
+    <table
+      style="
+        width: 100%;
+        border-collapse: collapse;
+        background-color: #f9f8f7;
+        border-radius: 8px;
+        padding: 20px;
+      "
+    >
+      <tr>
+        <td style="padding: 20px">
+          <p
+            style="
+              margin: 0 0 8px 0;
+              font-size: 14px;
+              font-weight: 600;
+              color: #121110;
+            "
+          >
+            Your Message
+          </p>
+          <p
+            style="
+              margin: 0;
+              font-size: 16px;
+              color: #706c69;
+              white-space: pre-wrap;
+              line-height: 24px;
+            "
+          >
+            {{ message }}
+          </p>
+        </td>
+      </tr>
+    </table>
+  </td>
+</tr>
+<tr>
+  <td style="padding-bottom: 20px">
+    <p style="margin: 0; font-size: 16px; color: #706c69; line-height: 24px">
+      In the meantime, if you have any additional questions or urgent concerns,
+      feel free to reply directly to this email.
+    </p>
+  </td>
+</tr>
+<tr>
+  <td style="padding: 0 0 32px">
+    <p style="margin: 0; font-size: 16px; color: #706c69; line-height: 24px">
+      We appreciate your interest in Legal WatchDog and look forward to
+      connecting with you.
+    </p>
+  </td>
+</tr>
+{% endblock %}

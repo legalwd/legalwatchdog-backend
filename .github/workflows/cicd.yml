@@ -1,0 +1,416 @@
+name: Backend CI/CD
+
+on:
+  pull_request:
+    branches: [dev, main, staging]
+  push:
+    branches: [main, staging]
+
+jobs:
+  # ============================================================================
+  # CI - Test, Lint & Check Migrations (OPTIMIZED)
+  # ============================================================================
+  test:
+    name: Test, Lint & Check Migrations
+    runs-on: emerj-runner
+    if: github.event_name == 'pull_request'
+    timeout-minutes: 30
+    
+    env:
+      DATABASE_URL: postgresql+asyncpg://user:password@localhost:5432/watchdog_test
+      REDIS_URL: redis://localhost:6379/0
+      JWT_SECRET_KEY: test-secret-key-for-ci
+      JWT_ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      REFRESH_TOKEN_EXPIRE_DAYS: 7
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      
+      - name: Install uv
+        run: pip install uv
+      
+      # Cache virtual environment (most important!)
+      - name: Cache virtual environment
+        uses: actions/cache@v4
+        id: cache-venv  # Add ID to check if cache hit
+        with:
+          path: .venv
+          key: ${{ runner.os }}-venv-${{ hashFiles('**/pyproject.toml', '**/uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-venv-
+      
+      # Only install deps if cache missed
+      - name: Create venv and install deps
+        if: steps.cache-venv.outputs.cache-hit != 'true'
+        run: |
+          python3 -m venv .venv
+          source .venv/bin/activate
+          uv sync
+      
+      # Just report if cache was used
+      - name: Using cached dependencies
+        if: steps.cache-venv.outputs.cache-hit == 'true'
+        run: echo "Using cached virtual environment - skipping dependency installation"
+      
+      - name: Lint with Ruff
+        run: |
+          source .venv/bin/activate
+          uv run ruff check .
+          uv run ruff format --check .
+      
+      - name: Check Alembic heads
+        run: |
+          source .venv/bin/activate
+          HEAD_COUNT=$(uv run alembic heads | grep "head" | wc -l)
+          if [ "$HEAD_COUNT" -gt 1 ]; then
+            echo "❌ Multiple Alembic heads detected!"
+            uv run alembic heads
+            exit 1
+          fi
+          echo "No multiple heads detected."
+      
+      - name: Reset test database
+        run: |
+          PGPASSWORD=password psql -U user -h localhost -d postgres \
+            -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'watchdog_test' AND pid <> pg_backend_pid();"
+          PGPASSWORD=password psql -U user -h localhost -d postgres -c "DROP DATABASE IF EXISTS watchdog_test;"
+          PGPASSWORD=password psql -U user -h localhost -d postgres -c "CREATE DATABASE watchdog_test;"
+
+      - name: Run migrations
+        run: |
+          source .venv/bin/activate
+          uv run alembic upgrade head
+      
+      - name: Run tests with Pytest
+        run: |
+          source .venv/bin/activate
+          uv run pytest tests/ --verbose
+
+  # ============================================================================
+  # CD - Deploy Production
+  # ============================================================================
+  deploy_prod:
+    name: Deploy Production
+    runs-on: emerj-runner
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: production
+    timeout-minutes: 15
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Deploy to Production
+        env:
+          SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+        run: |
+          echo "Deploying to production server: $SSH_HOST"
+          
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ubuntu@$SSH_HOST << 'EOF'
+            set -e
+            
+            echo "Navigating to production directory..."
+            cd /var/www/legalwatchdog-BE-prod
+            
+            echo "Stopping backend and workers to free DB connections..."
+            sudo systemctl stop legalwatch-prod || true
+            sudo systemctl stop celery-scraping-prod || true
+            sudo systemctl stop celery-processing-prod || true
+            sudo systemctl stop celery-beat-prod || true
+            sudo systemctl stop flower-prod || true
+            
+            echo "Checking available memory..."
+            free -h
+            
+            echo "Fetching latest code..."
+            git fetch origin
+            
+            echo "Resetting to origin/main..."
+            git reset --hard origin/main
+            
+            echo "Current commit:"
+            git log -1 --oneline
+            
+            echo "Activating virtual environment..."
+            source .venv/bin/activate
+            
+            echo "Installing dependencies..."
+            uv pip install -e .
+            
+            echo "Running database migrations..."
+            alembic upgrade head
+            
+            echo "Deactivating virtual environment..."
+            deactivate
+            
+            echo "Restarting production backend..."
+            sudo systemctl restart legalwatch-prod
+            echo "legalwatch-prod restarted."
+            
+            echo "Starting production Celery workers..."
+            sudo systemctl restart celery-beat-prod
+            echo "celery-beat-prod restarted"
+            
+            sleep 5
+            
+            sudo systemctl restart celery-processing-prod
+            echo "celery-processing-prod restarted"
+            
+            sleep 5
+            
+            sudo systemctl restart celery-scraping-prod
+            echo "celery-scraping-prod restarted"
+            
+            sleep 5
+            
+            sudo systemctl restart flower-prod
+            echo "flower-prod restarted"
+            
+            echo "Final memory check..."
+            free -h
+            
+            echo "Production deployment completed successfully!"
+          EOF
+          
+          echo "Deployment finished"
+      
+      - name: Verify Services
+        if: success()
+        env:
+          SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ubuntu@$SSH_HOST << 'EOF'
+            echo "🔍 Verifying service status..."
+            
+            for service in legalwatch-prod celery-scraping-prod celery-processing-prod celery-beat-prod flower-prod; do
+              if sudo systemctl is-active --quiet $service; then
+                echo "$service is running"
+              else
+                echo "❌ $service is NOT running"
+                exit 1
+              fi
+            done
+          EOF
+
+  # ============================================================================
+  # CD - Deploy Staging
+  # ============================================================================
+  deploy_staging:
+    name: Deploy Staging
+    runs-on: emerj-runner
+    if: github.event_name == 'push' && github.ref == 'refs/heads/staging'
+    environment: staging
+    timeout-minutes: 15
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Deploy to Staging
+        env:
+          SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+        run: |
+          echo "Deploying to staging server: $SSH_HOST"
+          
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ubuntu@$SSH_HOST << 'EOF'
+            set -e
+            
+            echo "📁 Navigating to staging directory..."
+            cd /var/www/legalwatchdog-BE-staging
+            
+            echo "Stopping backend and workers to free DB connections..."
+            sudo systemctl stop legalwatch-staging || true
+            sudo systemctl stop celery-scraping-staging || true
+            sudo systemctl stop celery-processing-staging || true
+            sudo systemctl stop celery-beat-staging || true
+            sudo systemctl stop flower-staging || true
+            
+            echo "Checking available memory..."
+            free -h
+            
+            echo "Fetching latest code..."
+            git fetch origin
+            
+            echo "Resetting to origin/staging..."
+            git reset --hard origin/staging
+            
+            echo "Current commit:"
+            git log -1 --oneline
+            
+            echo "Activating virtual environment..."
+            source .venv/bin/activate
+            
+            echo "Installing dependencies..."
+            uv pip install -e .
+            
+            echo "Running database migrations..."
+            alembic upgrade head
+            
+            echo "Deactivating virtual environment..."
+            deactivate
+            
+            echo "Restarting staging backend..."
+            sudo systemctl restart legalwatch-staging
+            echo "legalwatch-staging restarted"
+            
+            echo "Starting staging Celery workers..."
+            sudo systemctl restart celery-beat-staging
+            echo "celery-beat-staging restarted"
+            
+            sleep 5
+            
+            sudo systemctl restart celery-processing-staging
+            echo "celery-processing-staging restarted"
+            
+            sleep 5
+            
+            sudo systemctl restart celery-scraping-staging
+            echo "celery-scraping-staging restarted"
+            
+            sleep 5
+            
+            sudo systemctl restart flower-staging
+            echo "flower-staging restarted"
+            
+            echo "Final memory check..."
+            free -h
+            
+            echo "Staging deployment completed successfully!"
+          EOF
+          
+          echo "Deployment finished"
+      
+      - name: Verify Services
+        if: success()
+        env:
+          SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ubuntu@$SSH_HOST << 'EOF'
+            echo "🔍 Verifying service status..."
+            
+            for service in legalwatch-staging celery-scraping-staging celery-processing-staging celery-beat-staging flower-staging; do
+              if sudo systemctl is-active --quiet $service; then
+                echo "$service is running"
+              else
+                echo "❌ $service is NOT running"
+                exit 1
+              fi
+            done
+          EOF
+
+  # ============================================================================
+  # Slack Notifications
+  # ============================================================================
+  notify_slack:
+    name: Notify Slack
+    runs-on: emerj-runner
+    needs: [test, deploy_prod, deploy_staging]
+    if: always()
+    
+    steps:
+      - name: Send Slack Notification
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          TEST_RESULT: ${{ needs.test.result }}
+          PROD_RESULT: ${{ needs.deploy_prod.result }}
+          STAGING_RESULT: ${{ needs.deploy_staging.result }}
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            BRANCH="${{ github.head_ref }} → ${{ github.base_ref }}"
+          else
+            BRANCH="${GITHUB_REF#refs/heads/}"
+          fi
+          
+          if [ "$PROD_RESULT" == "success" ] || [ "$STAGING_RESULT" == "success" ] || [ "$TEST_RESULT" == "success" ]; then
+            STATUS="✅ Pipeline Successful"
+            COLOR="good"
+          else
+            STATUS="❌ Pipeline Failed"
+            COLOR="danger"
+          fi
+          
+          DETAILS=""
+          
+          if [ "$TEST_RESULT" == "success" ]; then
+            DETAILS="${DETAILS}\n✅ *Tests & Linting:* Passed"
+          elif [ "$TEST_RESULT" == "failure" ]; then
+            DETAILS="${DETAILS}\n❌ *Tests & Linting:* Failed"
+          elif [ "$TEST_RESULT" == "skipped" ]; then
+            DETAILS="${DETAILS}\n⏭️ *Tests & Linting:* Skipped (not a PR)"
+          fi
+          
+          if [ "$PROD_RESULT" == "success" ]; then
+            DETAILS="${DETAILS}\n✅ *Production:* Successfully deployed"
+          elif [ "$PROD_RESULT" == "failure" ]; then
+            DETAILS="${DETAILS}\n❌ *Production:* Deployment failed"
+          elif [ "$PROD_RESULT" == "skipped" ]; then
+            DETAILS="${DETAILS}\n⏭️ *Production:* Skipped (not main branch)"
+          fi
+          
+          if [ "$STAGING_RESULT" == "success" ]; then
+            DETAILS="${DETAILS}\n✅ *Staging:* Successfully deployed"
+          elif [ "$STAGING_RESULT" == "failure" ]; then
+            DETAILS="${DETAILS}\n❌ *Staging:* Deployment failed"
+          elif [ "$STAGING_RESULT" == "skipped" ]; then
+            DETAILS="${DETAILS}\n⏭️ *Staging:* Skipped (not staging branch)"
+          fi
+          
+          DETAILS="${DETAILS}\n\n📋 *Branch:* \`${BRANCH}\`"
+          DETAILS="${DETAILS}\n👤 *Triggered by:* ${GITHUB_ACTOR}"
+          
+          LOG_LINK="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          
+          PAYLOAD="{
+            \"attachments\": [
+              {
+                \"color\": \"${COLOR}\",
+                \"blocks\": [
+                  {
+                    \"type\": \"header\",
+                    \"text\": {
+                      \"type\": \"plain_text\",
+                      \"text\": \"🚀 Backend Pipeline Update\",
+                      \"emoji\": true
+                    }
+                  },
+                  {
+                    \"type\": \"section\",
+                    \"text\": {
+                      \"type\": \"mrkdwn\",
+                      \"text\": \"*${STATUS}*${DETAILS}\"
+                    }
+                  },
+                  {
+                    \"type\": \"divider\"
+                  },
+                  {
+                    \"type\": \"section\",
+                    \"text\": {
+                      \"type\": \"mrkdwn\",
+                      \"text\": \"Check the <${LOG_LINK}|detailed logs> for more info.\"
+                    }
+                  }
+                ]
+              }
+            ]
+          }"
+          
+          curl -X POST -H 'Content-type: application/json' --data "$PAYLOAD" $SLACK_WEBHOOK
+          
+          echo "✅ Slack notification sent"

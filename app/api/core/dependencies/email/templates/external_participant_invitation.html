@@ -1,0 +1,211 @@
+{% extends "base.html" %} {% block title %} Guest Access Invitation - Legal
+Watchdog {% endblock %} {% block preheader %} You've been invited to collaborate
+on a ticket - No account required {% endblock %} {% block header %}
+<tr>
+  <td>
+    <div style="text-align: center; padding: 42px 28px; margin-bottom: 30px">
+      <img
+        src="https://minio.legalwatch.dog/email-templates/static/logo.png"
+        alt="Legal WatchDog logo"
+        style="width: 60px; display: inline-block; vertical-align: middle"
+      />
+      <p
+        style="
+          margin: 0;
+          margin-left: 10px;
+          font-size: 30px;
+          font-weight: 700;
+          color: #401903;
+          line-height: 38px;
+          display: inline-block;
+          vertical-align: middle;
+        "
+      >
+        WatchDog
+      </p>
+    </div>
+  </td>
+</tr>
+{% endblock %} {% block content_body %}
+<tr>
+  <td style="padding-bottom: 8px">
+    <p
+      style="
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+        color: #1f1f1f;
+        line-height: 26px;
+      "
+    >
+      Hello {{ recipient_name }}!
+    </p>
+  </td>
+</tr>
+<tr>
+  <td>
+    <p
+      style="
+        margin: 0 0 19px;
+        font-size: 15px;
+        color: #3f342d;
+        line-height: 24px;
+      "
+    >
+      <strong>{{ invited_by_name }}</strong> from
+      <strong>{{ organization_name }}</strong> has invited you to collaborate as
+      <strong>{{ recipient_role }}</strong> on the following ticket:
+    </p>
+
+    <div
+      style="
+        background-color: #f5f5f5;
+        border-left: 4px solid #401903;
+        padding: 16px;
+        margin: 24px 0;
+      "
+    >
+      <p
+        style="
+          margin: 0 0 8px;
+          font-size: 14px;
+          font-weight: 600;
+          color: #401903;
+          line-height: 20px;
+        "
+      >
+        Ticket Details
+      </p>
+      <p
+        style="
+          margin: 0 0 4px;
+          font-size: 15px;
+          font-weight: 600;
+          color: #1f1f1f;
+          line-height: 22px;
+        "
+      >
+        {{ ticket_title }}
+      </p>
+      {% if ticket_description %}
+      <p
+        style="
+          margin: 8px 0 0;
+          font-size: 14px;
+          color: #3f342d;
+          line-height: 20px;
+        "
+      >
+        {{ ticket_description }}
+      </p>
+      {% endif %}
+      <p
+        style="
+          margin: 12px 0 0;
+          font-size: 13px;
+          color: #706c69;
+          line-height: 18px;
+        "
+      >
+        <strong>Priority:</strong>
+        <span style="text-transform: capitalize">{{ ticket_priority }}</span> |
+        <strong>Status:</strong>
+        <span style="text-transform: capitalize">{{ ticket_status }}</span>
+      </p>
+      {% if project_name %}
+      <p
+        style="
+          margin: 4px 0 0;
+          font-size: 13px;
+          color: #706c69;
+          line-height: 18px;
+        "
+      >
+        <strong>Project:</strong> {{ project_name }}
+      </p>
+      {% endif %}
+    </div>
+
+    <div
+      style="
+        background-color: #fff3cd;
+        border-left: 4px solid #ffc107;
+        padding: 12px;
+        margin: 20px 0;
+      "
+    >
+      <p style="margin: 0; font-size: 14px; color: #856404; line-height: 20px">
+        <strong>🔒 No Account Needed:</strong> You can access this ticket
+        directly using the secure link below. No registration or password
+        required.
+      </p>
+    </div>
+
+    <p
+      style="
+        margin: 0 0 32px;
+        font-size: 15px;
+        color: #3f342d;
+        line-height: 24px;
+      "
+    >
+      Click the button below to access the ticket. This secure link is unique to
+      you and expires on <strong>{{ expires_at }}</strong>.
+    </p>
+  </td>
+</tr>
+{% endblock %} {% block cta_section %}
+<tr>
+  <td style="padding-bottom: 32px; text-align: center">
+    <a
+      href="{{ magic_link }}"
+      target="_blank"
+      rel="noopener noreferrer"
+      style="
+        display: inline-block;
+        padding: 20px 32px;
+        background-color: #401903;
+        color: #ffffff;
+        font-size: 16px;
+        font-weight: 600;
+        border-radius: 8px;
+        text-decoration: none;
+        line-height: 24px;
+      "
+    >
+      Access Ticket (No Login Required)
+    </a>
+  </td>
+</tr>
+<tr>
+  <td style="padding-bottom: 84px">
+    <div style="background-color: #f8f9fa; padding: 16px; border-radius: 4px">
+      <p
+        style="
+          margin: 0 0 8px;
+          font-size: 13px;
+          font-weight: 600;
+          color: #1f1f1f;
+          line-height: 18px;
+        "
+      >
+        ⚠️ Important Security Information:
+      </p>
+      <ul
+        style="
+          margin: 0;
+          padding-left: 20px;
+          font-size: 13px;
+          color: #3f342d;
+          line-height: 20px;
+        "
+      >
+        <li>This link is personal and should not be shared</li>
+        <li>It provides access to only this specific ticket</li>
+        <li>Access expires on {{ expires_at }}</li>
+        <li>If you didn't expect this invitation, please ignore this email</li>
+      </ul>
+    </div>
+  </td>
+</tr>
+{% endblock %}

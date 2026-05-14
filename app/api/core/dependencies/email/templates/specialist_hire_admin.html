@@ -1,0 +1,199 @@
+{% extends "base.html" %} {% block title %}New Specialist Request - Legal
+Watchdog{% endblock %} {% block preheader %}{{ company_name }} has requested a specialist.{% endblock %} {% block header %}
+<tr>
+  <td>
+    <div style="text-align: center; padding: 42px 28px; margin-bottom: 30px">
+      <img
+        src="https://minio.legalwatch.dog/email-templates/static/logo.png"
+        alt="Legal WatchDog logo"
+        style="width: 60px; display: inline-block; vertical-align: middle"
+      />
+      <p
+        style="
+          margin: 0;
+          margin-left: 10px;
+          font-size: 30px;
+          font-weight: 700;
+          color: #401903;
+          line-height: 38px;
+          display: inline-block;
+          vertical-align: middle;
+        "
+      >
+        WatchDog
+      </p>
+    </div>
+  </td>
+</tr>
+{% endblock %} {% block content_body %}
+<tr>
+  <td style="padding-bottom: 20px">
+    <p
+      style="
+        margin: 0;
+        font-size: 24px;
+        font-weight: 500;
+        color: #121110;
+        line-height: 28px;
+      "
+    >
+      New Specialist Request
+    </p>
+  </td>
+</tr>
+<tr>
+  <td style="padding-bottom: 20px">
+    <p style="margin: 0; font-size: 16px; color: #706c69; line-height: 24px">
+      A new specialist hire request has been submitted by
+      <strong>{{ company_name }}</strong>.
+    </p>
+  </td>
+</tr>
+<tr>
+  <td style="padding-bottom: 30px">
+    <table style="width: 100%; border-collapse: collapse; border-radius: 8px">
+      <tr>
+        <td style="padding: 12px 20px 12px 0px">
+          <p
+            style="
+              margin: 0 0 8px 0;
+              font-size: 14px;
+              font-weight: 600;
+              color: #121110;
+            "
+          >
+            Company Name
+          </p>
+          <p style="margin: 0; font-size: 16px; color: #706c69">
+            {{ company_name }}
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 12px 20px 12px 0px">
+          <p
+            style="
+              margin: 0 0 8px 0;
+              font-size: 14px;
+              font-weight: 600;
+              color: #121110;
+            "
+          >
+            Company Email
+          </p>
+          <p style="margin: 0; font-size: 16px; color: #706c69">
+            <a
+              href="mailto:{{ company_email }}"
+              style="color: #c14e32; text-decoration: none"
+              >{{ company_email }}</a
+            >
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 12px 20px 12px 0px">
+          <p
+            style="
+              margin: 0 0 8px 0;
+              font-size: 14px;
+              font-weight: 600;
+              color: #121110;
+            "
+          >
+            Industry
+          </p>
+          <p style="margin: 0; font-size: 16px; color: #706c69">
+            {{ industry }}
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 12px 20px 12px 0px">
+          <p
+            style="
+              margin: 0 0 8px 0;
+              font-size: 14px;
+              font-weight: 600;
+              color: #121110;
+            "
+          >
+            Brief Description
+          </p>
+          <p
+            style="
+              margin: 0;
+              font-size: 16px;
+              color: #706c69;
+              white-space: pre-wrap;
+            "
+          >
+            {{ brief_description }}
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 12px 20px 12px 0px">
+          <p
+            style="
+              margin: 0 0 8px 0;
+              font-size: 14px;
+              font-weight: 600;
+              color: #121110;
+            "
+          >
+            Request ID
+          </p>
+          <p style="margin: 0; font-size: 16px; color: #706c69">
+            {{ hire_id }}
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 12px 20px 12px 0px">
+          <p
+            style="
+              margin: 0 0 8px 0;
+              font-size: 14px;
+              font-weight: 600;
+              color: #121110;
+            "
+          >
+            Submitted At
+          </p>
+          <p style="margin: 0; font-size: 16px; color: #706c69">
+            {{ submitted_at }}
+          </p>
+        </td>
+      </tr>
+    </table>
+  </td>
+</tr>
+<tr>
+  <td style="padding-bottom: 20px">
+    <p style="margin: 0; font-size: 16px; color: #706c69; line-height: 24px">
+      Please review this request and reach out to the company as soon as possible.
+    </p>
+  </td>
+</tr>
+{% endblock %} {% block cta_section %}
+<tr>
+  <td style="padding-bottom: 84px; text-align: center">
+    <a
+      href="mailto:{{ company_email }}"
+      style="
+        display: inline-block;
+        padding: 20px 32px;
+        background-color: #401903;
+        color: #ffffff;
+        font-size: 16px;
+        font-weight: 600;
+        border-radius: 8px;
+        text-decoration: none;
+        line-height: 24px;
+      "
+    >
+      Contact {{ company_name }}
+    </a>
+  </td>
+</tr>
+{% endblock %}

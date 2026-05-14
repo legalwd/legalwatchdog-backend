@@ -1,0 +1,118 @@
+{% extends "base.html" %} {% block title %} OTP for Registration - Legal
+Watchdog {% endblock %} {% block preheader %} Your OTP is {{ otp |
+default("234567") }} for {{ APP_NAME | default("Legal WatchDog") }}. {% endblock
+%} {% block header %}
+<tr>
+  <td>
+    <div style="text-align: center; padding: 42px 28px; margin-bottom: 30px">
+      <img
+        src="https://minio.legalwatch.dog/email-templates/static/logo.png"
+        alt="Legal WatchDog logo"
+        style="width: 60px; display: inline-block; vertical-align: middle"
+      />
+      <p
+        style="
+          margin: 0;
+          margin-left: 10px;
+          font-size: 30px;
+          font-weight: 700;
+          color: #401903;
+          line-height: 38px;
+          display: inline-block;
+          vertical-align: middle;
+        "
+      >
+        WatchDog
+      </p>
+    </div>
+  </td>
+</tr>
+{% endblock %} {% block content_body %}
+<tr>
+  <td class="content-padding" style="padding: 0 0 40px">
+    <table
+      role="presentation"
+      width="100%"
+      cellspacing="0"
+      cellpadding="0"
+      border="0"
+    >
+      <tr>
+        <td style="padding-bottom: 20px">
+          <p
+            style="
+              margin: 0;
+              font-size: 24px;
+              font-weight: 500;
+              color: #121110;
+              line-height: 28px;
+            "
+          >
+            Hello {{ organization_name | default("There") | title}},
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding-bottom: 16px">
+          <p
+            style="
+              margin: 0;
+              font-size: 16px;
+              color: #706c69;
+              line-height: 24px;
+            "
+          >
+            Your {{ APP_NAME | default("Legal Watch Dog") | title }}
+            verification code is:
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 24px 0">
+          <div
+            style="
+              margin: 0 auto 24px;
+              padding: 10px 40px;
+              border: 1px solid #d9d9d9;
+              border-radius: 16px;
+              text-align: center;
+              max-width: fit-content;
+            "
+          >
+            <p
+              style="
+                margin: 0;
+                font-size: 28px;
+                font-weight: 700;
+                color: #1f1f1f;
+              "
+            >
+              {{ otp | default("234567") }}
+            </p>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding-bottom: 16px">
+          <p
+            style="
+              margin: 0;
+              font-size: 16px;
+              color: #706c69;
+              line-height: 24px;
+            "
+          >
+            {% set mins = otp_expiry_minutes | default(16) %} {% if mins >= 60
+            %} {% set hours = (mins // 60) %} This code will expire in {{ hours
+            }} hour{{ 's' if hours > 1 }}. {% else %} This code will expire in
+            {{ mins }} minutes. {% endif %}
+
+            <br /><br />
+            If you did not request this, please ignore this email.
+          </p>
+        </td>
+      </tr>
+    </table>
+  </td>
+</tr>
+{% endblock %}

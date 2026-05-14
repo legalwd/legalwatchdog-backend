@@ -1,0 +1,173 @@
+Onboarding Brief: AI SWE Agent for Project LegalWatchDog
+
+Welcome to the team. You are being onboarded to assist in the development of "LegalWatchDog," a Python-based enterprise web application. This document provides the complete technical and functional context you need to understand the project's goals, architecture, and requirements.
+
+1. Project Overview & Core Concept
+
+Project: LegalWatchDog
+Tech Stack: Python (FastAPI), Redis (ARQ Task Queue, Caching), PostgreSQL (Primary DB), React/Shadcn (Frontend).
+Core Purpose: LegalWatchDog is not a simple "website changed" checker. It is an AI-driven, factual-change monitoring system with an integrated collaboration and audit workflow.
+
+Its value is twofold:
+
+AI-Powered Extraction: It doesn't just "diff" HTML. It uses AI prompts (defined by the user) to extract specific facts from unstructured sources (e.g., "What is the visa price?" -> {"price": 60}).
+
+Workflow & Audit: It bridges the gap from detection to action by creating a "ticket" (a self-contained collaboration thread) and providing a full, auditable history of all changes and discussions.
+
+2. Core Features & Functional Flow
+
+The application's lifecycle is segmented into three main stages.
+
+Stage 1: Hierarchical Configuration (The "Setup")
+
+This is handled by a "Core User" and defines what to monitor.
+
+Projects: The top-level container (e.g., "Visa Monitoring"). Holds the master AI prompt (e.g., "Extract all visa-related fees").
+
+Jurisdictions: Flexible, nestable groupings (e.g., "Europe" > "France" > "Paris"). These act like folders and can optionally refine the AI prompt (e.g., "Focus only on Type-D visas" for the "France" jurisdiction).
+
+Sources: The specific URLs or file paths to be scraped. Each Source has its own scraping schedule (e.g., "every 24 hours").
+
+Stage 2: Automated Monitoring (The "Engine")
+
+This is the core background process, managed by Redis and ARQ workers.
+
+Schedule: A cron job enqueues tasks based on Source schedules.
+
+Execute: A worker picks up a job (e.g., scrape_source(id=123)).
+
+Fetch: The worker uses httpx (or Playwright for JS-heavy sites) to fetch the raw content.
+
+Compile Prompt: The worker gathers the Project prompt, Jurisdiction prompt, and Source prompt and compiles them into one master instruction for the AI.
+
+Extract Fact: The worker calls the LLM, which executes the prompt against the raw content and returns a structured (JSON) or unstructured (text) answer.
+
+Compare: The worker fetches the previous DataRevision for this Source (ideally from a Redis cache) and compares it to the new answer.
+
+Save: The worker saves the new answer as a DataRevision in the PostgreSQL database, setting a boolean flag: was_change_detected=True if the data is different.
+
+Notify: If a change was detected, the system triggers an in-app and/or email notification to the relevant Core Users.
+
+Stage 3: Collaborative Resolution (The "Workflow")
+
+This is the human-in-the-loop component.
+
+Ticketing: A Core User reviews the detected change (a side-by-side "diff" view) and creates a Ticket. This Ticket is permanently linked to the specific DataRevision that triggered it.
+
+Collaboration: Core Users can discuss the change inside the ticket (e.G., "This is a major compliance update, we need to update our internal handbook").
+
+Participant Access: A Core User can invite an external "Participant" (e.g., a factory manager, a legal consultant) to the ticket without creating an account for them. The Participant receives a secure, one-time-use email link to view and comment on only that specific ticket.
+
+Audit Trail: The ticket serves as a permanent, auditable record that the change was detected, discussed, and resolved.
+
+3. Role-Based Access Control (RBAC)
+
+Access is strictly controlled based on role.
+
+Organisation Administrator:
+
+The "owner" of the tenant account.
+
+Manages the Organisation settings.
+
+Configures Enterprise SSO (SAML/IHE).
+
+Invites, deactivates, and assigns roles to Core Users.
+
+Manages billing and subscription (future).
+
+Core User (Manager, Editor, etc.):
+
+The primary operator of the application.
+
+Invited by an Administrator.
+
+Creates and manages Projects, Jurisdictions, and Sources.
+
+Reviews detected changes and creates/manages Tickets.
+
+Invites external Participants to tickets.
+
+Participant (External):
+
+Not a user. Has no account, no password, and no login.
+
+Gains temporary, scoped, and token-based access to a single ticket via a secure email link.
+
+This is a critical feature for external collaboration without compromising security.
+
+API Consumer (System):
+
+A machine-to-machine entity.
+
+Uses a static, revocable API key.
+
+Has read-only access to specific endpoints (e.g., retrieving the latest DataRevision for an external dashboard).
+
+4. Authentication & User Management Architecture
+
+This is a Zero Trust, Invite-Only system. There is NO public "Sign Up" page.
+
+Primary Goal: An Administrator must explicitly provision all Core User accounts.
+
+Path A: Enterprise SSO (SAML/IHE)
+
+For: Enterprise clients (e.g., Google Workspace, Azure AD, Okta).
+
+Flow:
+
+Administrator configures their IdP details in our SSOConfig table.
+
+Administrator invites jane@company.com.
+
+The system pre-provisions an account for jane@company.com and flags it as auth_provider='oidc'.
+
+Jane receives a simple "You've been added" email.
+
+Jane goes to the login page, types her email, is redirected to her company's IdP (e.g., Google), logs in there, and is seamlessly logged into LegalWatchDog.
+
+Path B: Standard Login (Email + Password)
+
+For: Non-SSO clients or the very first Administrator of a new organisation.
+
+Flow:
+
+Administrator invites bob@lawfirm.com.
+
+The system generates a secure, one-time, 48-hour-expiry token.
+
+This token is stored in a UserInvitation table in the database.
+
+Bob receives an "You are invited to LegalWatchDog" email with a unique link: .../accept-invite?token=...
+
+Bob clicks the link. The backend validates the token.
+
+Bob is shown a "Set Your Password" screen.
+
+Upon submission, his password is hashed (bcrypt), the User account is activated, and the UserInvitation token is deleted.
+
+Critical Auth Tech
+
+Password Hashing: Use passlib[bcrypt] for all password storage.
+
+JWT Revocation (Logout): Use Redis as a "denylist." When a user logs out, their JWT's unique ID (jti) is added to Redis with a TTL matching the token's expiry. A middleware must check this list on every request.
+
+Rate Limiting: Use Redis to rate-limit login attempts (e.g., 5 failed attempts per IP/email per minute) to prevent brute-force attacks.
+
+5. CRITICAL VALIDATION: Organisation Creation
+
+This is a key business rule you must implement.
+
+Requirement: The very first Administrator who signs up to create a new organisation MUST use a corporate email address.
+
+Action: You must maintain a blocklist of common free email providers (e.g., gmail.com, yahoo.com, outlook.com, aol.com, hotmail.com).
+
+Implementation:
+
+This validation check runs only during the "Create Organisation" or "Accept Admin Invite" flow.
+
+If the email's domain is in the blocklist, the API must reject the request with a 400 Bad Request error.
+
+Error Message: "Please use a corporate email address. Free email providers are not permitted for creating an organisation."
+
+Important: This check does not apply to Core Users being invited to an existing organisation, and it does not apply to external Participants being invited to a ticket. It is only for the root account of a new tenant.

@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome to Legal WatchDog{% endblock %}
+
+{% block preheader %}Your account is all set. Start tracking regulatory changes today.{% endblock %}
+
+{% block header %}
+<tr>
+  <td align="center" style="padding-bottom: 40px;">
+    <img src="https://minio.legalwatch.dog/email-templates/static/email-hero.png" alt="Legal WatchDog" width="100%"
+      style="max-width: 600px; display: block; border: 0;">
+  </td>
+</tr>
+{% endblock %}
+
+{% block content_body %}
+<tr>
+  <td>
+    <h1
+      style="margin: 0 0 24px; font-family: 'Inter', Arial, sans-serif; font-size: 32px; font-weight: 700; color: #121110; text-align: center;">
+      Welcome to LegalWatchDog
+    </h1>
+
+    <p style="margin: 0 0 16px; font-family: 'Inter', Arial, sans-serif; font-size: 18px; font-weight: 700; color: #121110;">
+      Hello {{ username }},
+    </p>
+
+    <p
+      style="margin: 0 0 20px; font-family: 'Inter', Arial, sans-serif; font-size: 16px; font-weight: 500; color: #3f342d; line-height: 1.6;">
+      Your account is all set. You can now create your first project and start tracking the regulatory changes that
+      matter to you.
+    </p>
+
+    <p
+      style="margin: 0 0 12px; font-family: 'Inter', Arial, sans-serif; font-size: 16px; font-weight: 500; color: #3f342d; line-height: 1.6;">
+      Here are the first steps to get started:
+    </p>
+
+    <ul
+      style="margin: 0 0 24px; padding-left: 20px; font-family: 'Inter', Arial, sans-serif; font-size: 16px; font-weight: 500; color: #3f342d; line-height: 1.8;">
+      <li style="margin-bottom: 8px;">Create a new project</li>
+      <li style="margin-bottom: 8px;">Add a jurisdiction to monitor</li>
+      <li style="margin-bottom: 8px;">Choose whether to use AI or hire a specialist for research</li>
+      <li style="margin-bottom: 8px;">Set alerts for regulation and price updates</li>
+      <li style="margin-bottom: 8px;">View everything from your dashboard in real time</li>
+    </ul>
+
+    <p
+      style="margin: 0 0 20px; font-family: 'Inter', Arial, sans-serif; font-size: 16px; font-weight: 500; color: #3f342d; line-height: 1.6;">
+      If you didn't sign up for this account, please reach out to our support team.
+    </p>
+
+    <p
+      style="margin: 0 0 40px; font-family: 'Inter', Arial, sans-serif; font-size: 16px; font-weight: 500; color: #3f342d; line-height: 1.6;">
+      Thanks for joining LegalWatchDog. We're glad to have you here.
+    </p>
+  </td>
+</tr>
+{% endblock %}
+
+{% block cta_section %}
+<tr>
+  <td align="center" style="padding: 0 0 60px;">
+    <a href="{{ dashboard_url }}" target="_blank"
+      style="background-color: #3c2610; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 4px; font-family: 'Inter', Arial, sans-serif; font-size: 16px; font-weight: 700; display: inline-block;">
+      Log in to the Account
+    </a>
+  </td>
+</tr>
+{% endblock %}
+
+

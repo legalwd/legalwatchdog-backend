@@ -1,0 +1,107 @@
+# Phase 5A — Celery Pipeline Orchestration
+
+> GitHub Issue: [#541](https://github.com/emerjent/legalwatchdog-be/issues/541)
+> Branch: `feature/campaign-phase-5a` from `dev`
+
+## User Review Required
+
+> [!IMPORTANT]
+> This phase will introduce the primary orchestration backend for campaigns using Celery tasks, and replace the stubbed implementation. Please review the structure of the Celery chains and the Instructor validation strategy.
+
+---
+
+## Architecture: Celery Pipeline
+
+We will wire together the full campaign pipeline using Celery tasks + chains: taxonomy generation → hydration → source discovery → scraping → blog generation → SEO publish.
+This pipeline is executed as a Celery chord/chain where the tasks process in sequence.
+
+```mermaid
+flowchart TD
+    A[Launch Campaign] --> B[generate_taxonomy_task]
+    B --> C[hydrate_campaign_task]
+    C --> D[discover_sources_task]
+    D --> E[dispatch_campaign_scrapes_task]
+    E --> F[publish_campaign_blogs_task]
+
+    B -.->|Error| Z[campaign_pipeline_error_handler]
+    C -.->|Error| Z
+    D -.->|Error| Z
+    E -.->|Error| Z
+    F -.->|Error| Z
+```
+
+---
+
+## Proposed Changes
+
+### Celery Tasks Definition
+
+#### [NEW] [campaign_tasks.py](file:///c:/Users/PC/Documents/HNGi13/legal-watch-dog-be/app/api/modules/v1/campaigns/tasks/campaign_tasks.py)
+
+We will create the tasks required to execute the components of the campaign.
+
+- `generate_taxonomy_task(campaign_id: str)`: Calls `TaxonomyGenerationService.generate()`.
+- `hydrate_campaign_task(campaign_id: str)`: Calls `CampaignHydrationService.hydrate()`.
+- `discover_sources_task(campaign_id: str)`: Calls `CampaignSourceDiscoveryService.discover_all()`.
+- `dispatch_campaign_scrapes_task(campaign_id: str)`: Enqueues scrape jobs for all campaign jurisdictions and updates status to `SCRAPING`.
+- `publish_campaign_blogs_task(campaign_id: str)`: Generates and writes blog artifacts for all campaign jurisdictions; triggers `sitemap_rebuild_debounced.delay()`; updates status to `PUBLISHING` then `MONITORING`.
+- `campaign_pipeline_error_handler(request, exc, traceback)`: Unified error handling that sets `Campaign.status = FAILED` and logs to `CampaignExecutionLog`.
+
+All tasks will be configured with: `queue="processing", bind=True, max_retries=3, default_retry_delay=60`.
+Redis Pub/Sub will be used at the beginning and end of each task to broadcast progress to `campaign_progress:{campaign_id}`.
+
+### Structured Output Contract (Instructor)
+
+#### [MODIFY] [taxonomy_generation_service.py](file:///c:/Users/PC/Documents/HNGi13/legal-watch-dog-be/app/api/modules/v1/campaigns/service/taxonomy_generation_service.py)
+
+Ensure exact schema-constrained parsing is enforced in LLM interaction via the `Instructor` library.
+Validation failures will be caught, feedback will be provided for retries (max 2), and if it fails completely, it raises a specific domain error and logs structured validation errors.
+Raw LLM response and validated models will both persist for audit purposes.
+
+### Campaign Orchestration Object
+
+#### [NEW] [campaign_orchestration_service.py](file:///c:/Users/PC/Documents/HNGi13/legal-watch-dog-be/app/api/modules/v1/campaigns/service/campaign_orchestration_service.py)
+#### [MODIFY] [factory.py](file:///c:/Users/PC/Documents/HNGi13/legal-watch-dog-be/app/api/modules/v1/campaigns/pipelines/factory.py)
+
+We will introduce `CampaignOrchestrationService` which implements the [CampaignPipelineRunner](file:///c:/Users/PC/Documents/HNGi13/legal-watch-dog-be/app/api/modules/v1/campaigns/pipelines/base.py#7-88) interface methods:
+- [run(campaign_id)](file:///c:/Users/PC/Documents/HNGi13/legal-watch-dog-be/app/api/modules/v1/campaigns/pipelines/celery_runner.py#20-34): Validates that status is `DRAFT`, sets it to `GENERATING_TAXONOMY` and builds/launches the Celery chain. Returns `{"backend": "celery", "task_id": "..."}`.
+- [get_status(campaign_id)](file:///c:/Users/PC/Documents/HNGi13/legal-watch-dog-be/app/api/modules/v1/campaigns/pipelines/base.py#35-48): Fetches phase breakdown and status.
+- [pause(campaign_id)](file:///c:/Users/PC/Documents/HNGi13/legal-watch-dog-be/app/api/modules/v1/campaigns/pipelines/base.py#49-62): Updates status to `PAUSED` and revokes pending tasks.
+- [resume(campaign_id)](file:///c:/Users/PC/Documents/HNGi13/legal-watch-dog-be/app/api/modules/v1/campaigns/pipelines/celery_runner.py#60-70): Relaunches pipeline from the last completed phase.
+- [cancel(campaign_id)](file:///c:/Users/PC/Documents/HNGi13/legal-watch-dog-be/app/api/modules/v1/campaigns/pipelines/celery_runner.py#71-81): Status to `CANCELLED` and revokes pending.
+
+Updates to [factory.py](file:///c:/Users/PC/Documents/HNGi13/legal-watch-dog-be/app/api/modules/v1/campaigns/pipelines/factory.py) (and/or deleting [celery_runner.py](file:///c:/Users/PC/Documents/HNGi13/legal-watch-dog-be/app/api/modules/v1/campaigns/pipelines/celery_runner.py)) will ensure [get_pipeline_runner()](file:///c:/Users/PC/Documents/HNGi13/legal-watch-dog-be/app/api/modules/v1/campaigns/pipelines/factory.py#17-56) correctly resolves the orchestration service implementation.
+
+### API Routes
+
+#### [MODIFY] [campaign_routes.py](file:///c:/Users/PC/Documents/HNGi13/legal-watch-dog-be/app/api/modules/v1/campaigns/routes/campaign_routes.py)
+
+The routes will be defined to resolve the runner via the factory:
+- `POST /api/v1/campaigns/{id}/launch` (202 response)
+- `GET /api/v1/campaigns/{id}/status`
+- `POST /api/v1/campaigns/{id}/pause`
+- `POST /api/v1/campaigns/{id}/resume`
+- `POST /api/v1/campaigns/{id}/cancel`
+- `GET /api/v1/campaigns/{id}/progress-stream` (SSE handling)
+
+### Tests
+
+#### [NEW] [test_celery_pipeline.py](file:///c:/Users/PC/Documents/HNGi13/legal-watch-dog-be/tests/modules/v1/campaigns/test_celery_pipeline.py)
+
+Comprehensive unit tests to cover expected functionality of the Celery pipeline execution: launching sequences, pausing/cancelling/resuming tasks, error states, LLM parsing/Instructor usage in taxonomy, and event progress firing on Redis.
+
+---
+
+## Verification Plan
+
+### Automated Tests
+```bash
+uv run pytest tests/modules/v1/campaigns/test_celery_pipeline.py -v --tb=short
+uv run ruff check .
+```
+
+### Manual Verification
+1. Launch campaign `/api/v1/campaigns/{id}/launch` -> inspect logs expecting pipeline advancing from taxonomy to blogs.
+2. Confirm SSE endpoint receives Redis updates correctly.
+3. Simulate LLM error, assert `campaign_pipeline_error_handler` sets status to FAILED.
+4. Attempt API-level [pause](file:///c:/Users/PC/Documents/HNGi13/legal-watch-dog-be/app/api/modules/v1/campaigns/pipelines/base.py#49-62) and [resume](file:///c:/Users/PC/Documents/HNGi13/legal-watch-dog-be/app/api/modules/v1/campaigns/pipelines/celery_runner.py#60-70) validating logs correctly show revoke/dispatch logic.
