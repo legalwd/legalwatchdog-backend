@@ -128,6 +128,4 @@ nltk_data/
 
 .copilot-tracking/
 public/
-temp_auto_push.bat
-temp_interactive_push.bat
-.gitignore
+.vscode/
