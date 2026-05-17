@@ -1,0 +1,71 @@
+#!/bin/sh
+set -e
+
+FIXED=0
+FAILED=0
+
+STAGED=$(git diff --cached --name-only)
+
+fix_long_lines() {
+  file="$1"
+  awk 'length > 200 { print substr($0, 1, 200); next } { print }' "$file" > "${file}.cleaned"
+  mv "${file}.cleaned" "$file"
+}
+
+for file in $STAGED; do
+  [ -f "$file" ] || continue
+
+  if awk 'length > 200 { found=1; exit } END { exit !found }' "$file"; then
+    echo "⚠️  [long-line] $file — auto-fixing..."
+    fix_long_lines "$file"
+    git add "$file"
+    FIXED=1
+  fi
+
+  for pattern in "eval\s*\(" "Function\s*\("; do
+    if grep -qE "$pattern" "$file" 2>/dev/null; then
+      echo "❌ [obfuscation] $file matches: $pattern — review manually"
+      FAILED=1
+    fi
+  done
+
+  if echo "$file" | grep -qE 'pyproject\.toml|setup\.(py|cfg)|conftest\.py'; then
+    for pattern in "exec\s*\(" "compile\s*\(" "__import__" "subprocess"; do
+      if grep -qE "$pattern" "$file" 2>/dev/null; then
+        echo "❌ [python-injection] $file matches: $pattern — review manually"
+        FAILED=1
+      fi
+    done
+  fi
+done
+
+if [ "$FIXED" -eq 1 ]; then
+  echo ""
+  echo "🔧 Auto-fixes applied and re-staged. Run 'git diff --cached' to review."
+fi
+
+if [ "$FAILED" -eq 1 ]; then
+  echo ""
+  echo "❌ Commit blocked. Resolve the issues above manually, then re-commit."
+  exit 1
+fi
+
+# Run linting
+echo ""
+echo "🔍 Running Ruff linting and formatting..."
+
+# Check if uv is available
+if command -v uv > /dev/null 2>&1; then
+  uv run ruff check . --fix
+  uv run ruff format .
+else
+  # Fallback: try using ruff directly if available
+  if command -v ruff > /dev/null 2>&1; then
+    ruff check . --fix
+    ruff format .
+  else
+    echo "⚠️  Neither 'uv' nor 'ruff' found. Skipping ruff checks."
+  fi
+fi
+
+exit 0

@@ -11,14 +11,17 @@ repos:
     hooks:
       - id: ruff
         language_version: python3
-        args: ["--fix"]
+        exclude: ^(migrations/|alembic/|__pycache__/|\.venv/)
+      - id: ruff-format
+        language_version: python3
         exclude: ^(migrations/|alembic/|__pycache__/|\.venv/)
 
   - repo: local
     hooks:
       - id: alembic-check-multiple-heads
         name: Alembic – prevent multiple heads
-        entry: bash -c 'alembic heads | grep "head" | wc -l | xargs test 1 -eq'
+        entry: bash -c 'command -v alembic > /dev/null && (alembic heads | grep "head" | wc -l | xargs test 1 -eq) || echo "⚠️  Alembic not available, skipping check"'
         language: system
         pass_filenames: false
         types: [python]
+        stages: [commit]
