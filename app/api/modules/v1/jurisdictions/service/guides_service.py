@@ -601,3 +601,86 @@ class GuidesService:
         if sort == SortOrder.UPDATED_ASC:
             return sorted(jurisdictions, key=lambda j: j.updated_at)
         return jurisdictions
+
+    async def build_hierarchy_tree(self) -> list[dict]:
+        """Build the full hierarchical accordion tree of active locations.
+
+        Preloads the active location tree in memory in a single step to avoid
+        recursive N+1 DB calls, and structures a nested JSON tree.
+        """
+        # 1. Fetch all published blog posts
+        stmt = (
+            select(JurisdictionBlogPost, Jurisdiction)
+            .join(Jurisdiction, Jurisdiction.id == JurisdictionBlogPost.jurisdiction_id)
+            .where(JurisdictionBlogPost.is_published.is_(True))
+        )
+        result = await self.db.execute(stmt)
+        rows = result.all()
+
+        if not rows:
+            return []
+
+        # Map to keep track of published posts
+        published_posts = {row[1].id: row[0] for row in rows}
+        active_jurs = {row[1].id: row[1] for row in rows}
+
+        # 2. Collect all ancestor IDs to form a complete tree
+        all_jur_ids = set(active_jurs.keys())
+
+        # Traverse parent_ids that are not loaded yet
+        to_check = [j.parent_id for j in active_jurs.values() if j.parent_id is not None]
+        while to_check:
+            next_check = []
+            jurs_to_fetch = [pid for pid in to_check if pid not in all_jur_ids]
+            if jurs_to_fetch:
+                ancestor_stmt = select(Jurisdiction).where(
+                    Jurisdiction.id.in_(jurs_to_fetch),
+                    Jurisdiction.is_deleted.is_(False),
+                )
+                ancestor_result = await self.db.execute(ancestor_stmt)
+                ancestors = ancestor_result.scalars().all()
+                for ancestor in ancestors:
+                    active_jurs[ancestor.id] = ancestor
+                    all_jur_ids.add(ancestor.id)
+                    if ancestor.parent_id is not None and ancestor.parent_id not in all_jur_ids:
+                        next_check.append(ancestor.parent_id)
+            to_check = next_check
+
+        # 3. Construct the nested tree nodes
+        nodes = {}
+        for jur_id, jur in active_jurs.items():
+            post = published_posts.get(jur_id)
+            url = None
+            if post:
+                resource_path = await BlogGenerationService._build_public_resource_path(
+                    self.db, jur, post
+                )
+                url = build_public_resource_url(resource_path)
+
+            nodes[jur_id] = {
+                "id": str(jur.id),
+                "name": jur.name,
+                "slug": _slugify(jur.name),
+                "url": url,
+                "children": [],
+            }
+
+        # 4. Link children to parents
+        roots = []
+        # Sort nodes by name so that siblings are in alphabetical order
+        sorted_jurs = sorted(active_jurs.values(), key=lambda j: j.name.lower())
+
+        for jur in sorted_jurs:
+            node = nodes[jur.id]
+            if jur.parent_id is None:
+                roots.append(node)
+            else:
+                parent_node = nodes.get(jur.parent_id)
+                if parent_node:
+                    parent_node["children"].append(node)
+                else:
+                    # Fallback to root if parent was not found
+                    roots.append(node)
+
+        return roots
+
