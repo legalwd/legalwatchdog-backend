@@ -10,9 +10,13 @@ import pytest
 
 from app.api.core.custom_exceptions.exceptions import ResourceNotFoundError
 from app.api.modules.v1.jurisdictions.routes.public_blog_routes import (
+    get_blog_meta_countries,
+    get_blog_meta_topics,
+    get_blog_meta_tree,
     get_published_blog_post_by_resource_path,
     get_published_blog_post_by_slug,
     list_published_blog_posts,
+    search_published_blog_posts,
 )
 
 PUBLIC_ROUTE_MODULE = "app.api.modules.v1.jurisdictions.routes.public_blog_routes"
@@ -369,3 +373,52 @@ class TestGetPublishedBlogPostByResourcePath:
                 resource_path="resources/other/path/employment-rules-guide",
                 db=mock_db,
             )
+
+
+class TestPublicBlogMetaAndSearchRoutes:
+    """Tests for public blog meta and search route handlers."""
+
+    @pytest.mark.asyncio
+    async def test_get_blog_meta_tree_returns_200(self):
+        """Test active location hierarchy tree endpoint returns 200."""
+        mock_db = AsyncMock()
+        from unittest.mock import patch
+
+        with patch(
+            "app.api.modules.v1.jurisdictions.service.guides_service.GuidesService.build_hierarchy_tree",
+            return_value=[],
+        ):
+            response = await get_blog_meta_tree(db=mock_db)
+            body = json.loads(response.body)
+            assert body["status_code"] == 200
+            assert body["data"]["tree"] == []
+
+    @pytest.mark.asyncio
+    async def test_get_blog_meta_countries_returns_200(self):
+        """Test unique published countries list endpoint returns 200."""
+        mock_db = AsyncMock()
+        mock_db.execute = AsyncMock(return_value=MockScalarsAllResult(items=[]))
+        response = await get_blog_meta_countries(db=mock_db)
+        body = json.loads(response.body)
+        assert body["status_code"] == 200
+        assert body["data"]["countries"] == []
+
+    @pytest.mark.asyncio
+    async def test_get_blog_meta_topics_returns_200(self):
+        """Test unique published topic keywords list endpoint returns 200."""
+        mock_db = AsyncMock()
+        mock_db.execute = AsyncMock(return_value=MockScalarsAllResult(items=[["EOR", "Payroll"]]))
+        response = await get_blog_meta_topics(db=mock_db)
+        body = json.loads(response.body)
+        assert body["status_code"] == 200
+        assert "EOR" in body["data"]["topics"]
+
+    @pytest.mark.asyncio
+    async def test_search_published_blog_posts_returns_200(self):
+        """Test high-speed token search endpoint returns 200."""
+        mock_db = AsyncMock()
+        mock_db.execute = AsyncMock(return_value=MockScalarsAllResult(items=[]))
+        response = await search_published_blog_posts(q="test", db=mock_db)
+        body = json.loads(response.body)
+        assert body["status_code"] == 200
+        assert body["data"]["items"] == []

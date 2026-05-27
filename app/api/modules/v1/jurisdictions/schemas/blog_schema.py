@@ -11,6 +11,20 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
+class RelatedJurisdictionResponse(BaseModel):
+    """Response schema for a single related jurisdiction recommendation card."""
+
+    type: str = Field(
+        description=(
+            "Relationship type (e.g. Subdivision, Neighboring Country, "
+            "Reference Framework, Similar Framework)"
+        )
+    )
+    name: str = Field(description="Jurisdiction name")
+    region: str = Field(description="Country or region name")
+    url: str = Field(description="URL link to the target blog post")
+
+
 class BlogPostResponse(BaseModel):
     """Response schema for a jurisdiction blog post.
 
@@ -63,6 +77,10 @@ class BlogPostResponse(BaseModel):
     published_at: Optional[datetime]
     public_url: Optional[str] = None
     resource_path: Optional[str] = None
+    related_jurisdictions: List[RelatedJurisdictionResponse] = Field(
+        default_factory=list,
+        description="Dynamic recommendations and regional cross-comparisons.",
+    )
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -177,6 +195,10 @@ class PublicBlogPostResponse(BaseModel):
     updated_at: datetime
     public_url: Optional[str] = None
     resource_path: Optional[str] = None
+    related_jurisdictions: List[RelatedJurisdictionResponse] = Field(
+        default_factory=list,
+        description="Dynamic recommendations and regional cross-comparisons.",
+    )
 
     model_config = ConfigDict(from_attributes=True)
 
