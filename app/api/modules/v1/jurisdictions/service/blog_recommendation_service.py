@@ -167,7 +167,9 @@ class BlogRecommendationEngine:
         normalized_root_name = _normalize_name(root_jur.name)
 
         # Load CSV and find subregion
-        csv_path = settings.CAMPAIGN_TAXONOMY_REGION_DATASET_COUNTRIES_CSV_PATH or "dataset/countries.csv"
+        csv_path = (
+            settings.CAMPAIGN_TAXONOMY_REGION_DATASET_COUNTRIES_CSV_PATH or "dataset/countries.csv"
+        )
         resolved_path = self._resolve_csv_path(csv_path)
         if not resolved_path:
             logger.warning("countries.csv could not be resolved for neighbors search.")
@@ -247,7 +249,14 @@ class BlogRecommendationEngine:
         frameworks: List[RelatedJurisdictionResponse] = []
 
         # Find top-level published blog posts matching key names or containing 'Federal' or 'Union'
-        anchor_terms = ["federal", "union", "united states", "united kingdom", "european union", "eu"]
+        anchor_terms = [
+            "federal",
+            "union",
+            "united states",
+            "united kingdom",
+            "european union",
+            "eu",
+        ]
 
         stmt = (
             select(JurisdictionBlogPost, Jurisdiction)
@@ -278,7 +287,11 @@ class BlogRecommendationEngine:
                 region_name = "Global"
                 if "united states" in normalized_name or "federal" in normalized_name:
                     region_name = "North America"
-                elif "union" in normalized_name or "uk" in normalized_name or "united kingdom" in normalized_name:
+                elif (
+                    "union" in normalized_name
+                    or "uk" in normalized_name
+                    or "united kingdom" in normalized_name
+                ):
                     region_name = "Europe"
 
                 frameworks.append(

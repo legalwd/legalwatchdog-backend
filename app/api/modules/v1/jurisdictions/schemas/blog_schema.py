@@ -15,7 +15,10 @@ class RelatedJurisdictionResponse(BaseModel):
     """Response schema for a single related jurisdiction recommendation card."""
 
     type: str = Field(
-        description="Relationship type (e.g. Subdivision, Neighboring Country, Reference Framework, Similar Framework)"
+        description=(
+            "Relationship type (e.g. Subdivision, Neighboring Country, "
+            "Reference Framework, Similar Framework)"
+        )
     )
     name: str = Field(description="Jurisdiction name")
     region: str = Field(description="Country or region name")

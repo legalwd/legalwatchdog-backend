@@ -73,12 +73,16 @@ async def _build_public_payload(db: AsyncSession, post: JurisdictionBlogPost) ->
     else:
         resource_path = build_legacy_resource_path(post.slug)
 
-    from app.api.modules.v1.jurisdictions.service.blog_recommendation_service import BlogRecommendationEngine
-
-    is_mock = (
-        type(db).__name__ in ("AsyncMock", "MagicMock", "Mock", "NonCallableMagicMock")
-        or hasattr(db, "assert_called")
+    from app.api.modules.v1.jurisdictions.service.blog_recommendation_service import (
+        BlogRecommendationEngine,
     )
+
+    is_mock = type(db).__name__ in (
+        "AsyncMock",
+        "MagicMock",
+        "Mock",
+        "NonCallableMagicMock",
+    ) or hasattr(db, "assert_called")
     if is_mock:
         recommendations = []
     else:
@@ -131,7 +135,7 @@ async def list_published_blog_posts(
         >>> GET /api/v1/blog/posts?page=1&limit=20
         >>> # Returns published posts with content_html, slug, SEO metadata
     """
-    from sqlalchemy import func, String
+    from sqlalchemy import String, func
 
     count_stmt = (
         select(func.count())
@@ -146,15 +150,22 @@ async def list_published_blog_posts(
     )
 
     if isinstance(country, str):
-        from app.api.modules.v1.jurisdictions.service.guides_service import _slugify, GuidesService
+        from app.api.modules.v1.jurisdictions.service.guides_service import GuidesService, _slugify
+
         # Find matching country top-level jurisdiction
         country_stmt = select(Jurisdiction).where(
-            Jurisdiction.parent_id.is_(None),
-            Jurisdiction.is_deleted.is_(False)
+            Jurisdiction.parent_id.is_(None), Jurisdiction.is_deleted.is_(False)
         )
         country_res = await db.execute(country_stmt)
         candidates = country_res.scalars().all()
-        target_country = next((c for c in candidates if _slugify(c.name) == country or c.name.lower() == country.lower()), None)
+        target_country = next(
+            (
+                c
+                for c in candidates
+                if _slugify(c.name) == country or c.name.lower() == country.lower()
+            ),
+            None,
+        )
         if target_country:
             guides_service = GuidesService(db)
             subtree_ids = await guides_service._get_subtree_ids(target_country.id)
@@ -170,8 +181,12 @@ async def list_published_blog_posts(
 
     if isinstance(topic, str):
         # Case insensitive topic match on keywords casted to string
-        count_stmt = count_stmt.where(JurisdictionBlogPost.keywords.cast(String).ilike(f"%{topic}%"))
-        posts_stmt = posts_stmt.where(JurisdictionBlogPost.keywords.cast(String).ilike(f"%{topic}%"))
+        count_stmt = count_stmt.where(
+            JurisdictionBlogPost.keywords.cast(String).ilike(f"%{topic}%")
+        )
+        posts_stmt = posts_stmt.where(
+            JurisdictionBlogPost.keywords.cast(String).ilike(f"%{topic}%")
+        )
 
     count_result = await db.execute(count_stmt)
     total = count_result.scalar() or 0
@@ -440,4 +455,3 @@ async def search_published_blog_posts(
         message="Search results retrieved successfully",
         data={"items": posts_data, "pagination": pagination},
     )
-

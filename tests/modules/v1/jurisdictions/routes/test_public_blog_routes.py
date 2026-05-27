@@ -10,12 +10,12 @@ import pytest
 
 from app.api.core.custom_exceptions.exceptions import ResourceNotFoundError
 from app.api.modules.v1.jurisdictions.routes.public_blog_routes import (
+    get_blog_meta_countries,
+    get_blog_meta_topics,
+    get_blog_meta_tree,
     get_published_blog_post_by_resource_path,
     get_published_blog_post_by_slug,
     list_published_blog_posts,
-    get_blog_meta_tree,
-    get_blog_meta_countries,
-    get_blog_meta_topics,
     search_published_blog_posts,
 )
 
@@ -383,7 +383,11 @@ class TestPublicBlogMetaAndSearchRoutes:
         """Test active location hierarchy tree endpoint returns 200."""
         mock_db = AsyncMock()
         from unittest.mock import patch
-        with patch("app.api.modules.v1.jurisdictions.service.guides_service.GuidesService.build_hierarchy_tree", return_value=[]):
+
+        with patch(
+            "app.api.modules.v1.jurisdictions.service.guides_service.GuidesService.build_hierarchy_tree",
+            return_value=[],
+        ):
             response = await get_blog_meta_tree(db=mock_db)
             body = json.loads(response.body)
             assert body["status_code"] == 200
@@ -418,4 +422,3 @@ class TestPublicBlogMetaAndSearchRoutes:
         body = json.loads(response.body)
         assert body["status_code"] == 200
         assert body["data"]["items"] == []
-

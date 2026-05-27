@@ -1,9 +1,12 @@
 """Tests for BlogRecommendationEngine and accordion tree hierarchy."""
 
 import pytest
+
 from app.api.modules.v1.jurisdictions.models.jurisdiction_blog_post import JurisdictionBlogPost
 from app.api.modules.v1.jurisdictions.models.jurisdiction_model import Jurisdiction
-from app.api.modules.v1.jurisdictions.service.blog_recommendation_service import BlogRecommendationEngine
+from app.api.modules.v1.jurisdictions.service.blog_recommendation_service import (
+    BlogRecommendationEngine,
+)
 from app.api.modules.v1.jurisdictions.service.guides_service import GuidesService
 from app.api.modules.v1.organization.models.organization_model import Organization
 from app.api.modules.v1.projects.models.project_model import Project
@@ -11,7 +14,9 @@ from app.api.modules.v1.projects.models.project_model import Project
 
 @pytest.mark.asyncio
 async def test_blog_recommendations_and_tree(db_session):
-    """Test subdivisions, physical neighbors, reference frameworks, similar topics, and tree JSON structure."""
+    """Test subdivisions, physical neighbors, reference frameworks, similar topics,
+    and tree JSON structure.
+    """
     # 1. Create Organization
     org = Organization(
         name="Test Org Recommendations",
@@ -143,7 +148,8 @@ async def test_blog_recommendations_and_tree(db_session):
     types = [r.type for r in recs_ca]
     names = [r.name for r in recs_ca]
 
-    # California should have New York as a Subdivision sibling, and US/others as Reference Framework or Similar Framework
+    # California should have New York as a Subdivision sibling,
+    # and US/others as Reference Framework or Similar Framework
     assert "Subdivision" in types
     assert "New York" in names
 

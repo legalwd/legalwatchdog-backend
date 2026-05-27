@@ -683,4 +683,3 @@ class GuidesService:
                     roots.append(node)
 
         return roots
-
