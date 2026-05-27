@@ -132,11 +132,12 @@ jobs:
             echo "Checking available memory..."
             free -h
             
-            echo "Fetching latest code..."
-            git fetch origin
+            echo "Fetching and pruning latest code..."
+            git fetch origin --prune
             
-            echo "Resetting to origin/main..."
+            echo "Resetting to origin/main and purging local drift..."
             git reset --hard origin/main
+            git clean -fd
             
             echo "Current commit:"
             git log -1 --oneline
@@ -243,11 +244,12 @@ jobs:
             echo "Checking available memory..."
             free -h
             
-            echo "Fetching latest code..."
-            git fetch origin
+            echo "Fetching and pruning latest code..."
+            git fetch origin --prune
             
-            echo "Resetting to origin/staging..."
+            echo "Resetting to origin/staging and purging local drift..."
             git reset --hard origin/staging
+            git clean -fd
             
             echo "Current commit:"
             git log -1 --oneline
