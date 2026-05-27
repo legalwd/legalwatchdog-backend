@@ -31,6 +31,7 @@ ENV/
 # VSCode
 .history/
 *.code-workspace
+.vscode/
 
 # JetBrains IDEs (PyCharm, IntelliJ)
 .idea/
@@ -128,7 +129,4 @@ nltk_data/
 
 .copilot-tracking/
 public/
-temp_auto_push.bat
-temp_interactive_push.bat
-.gitignore
 branch_structure.json
