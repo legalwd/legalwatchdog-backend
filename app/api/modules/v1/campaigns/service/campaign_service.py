@@ -89,6 +89,8 @@ class CampaignService:
                 monitor_cadence=payload.monitor_cadence,
                 sources_per_jurisdiction=payload.sources_per_jurisdiction,
                 max_jurisdictions=payload.max_jurisdictions,
+                target_countries=payload.target_countries,
+                target_states=payload.target_states,
                 status=CampaignStatus.DRAFT,
                 created_by=created_by,
             )

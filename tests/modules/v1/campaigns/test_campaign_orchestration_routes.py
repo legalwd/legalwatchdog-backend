@@ -168,6 +168,42 @@ class TestCampaignOrchestrationRoutes:
         mock_service.trigger_content_pipeline.assert_awaited_once_with(
             sample_campaign.id,
             mode="run",
+            countries=None,
+            states=None,
+        )
+
+    async def test_run_campaign_content_with_geo_payload(
+        self,
+        async_client: AsyncClient,
+        sample_campaign: Campaign,
+    ) -> None:
+        """Test campaign content run triggers with optional country/state payload."""
+        with patch(
+            "app.api.modules.v1.campaigns.routes.campaign_routes.CampaignContentService"
+        ) as mock_service_cls:
+            mock_service = mock_service_cls.return_value
+            mock_service.trigger_content_pipeline = AsyncMock(
+                return_value={
+                    "status": "queued",
+                    "task_id": "content-task-1",
+                    "run_id": "run-1",
+                    "mode": "run",
+                }
+            )
+
+            response = await async_client.post(
+                f"/api/v1/campaigns/{sample_campaign.id}/content/run",
+                json={"countries": ["US"], "states": ["CA"]},
+            )
+
+        assert response.status_code == 202
+        payload = response.json()
+        assert payload["message"] == "Campaign content pipeline queued."
+        mock_service.trigger_content_pipeline.assert_awaited_once_with(
+            sample_campaign.id,
+            mode="run",
+            countries=["US"],
+            states=["CA"],
         )
 
     async def test_retry_failed_campaign_content(
@@ -200,6 +236,8 @@ class TestCampaignOrchestrationRoutes:
         mock_service.trigger_content_pipeline.assert_awaited_once_with(
             sample_campaign.id,
             mode="retry_failed",
+            countries=None,
+            states=None,
         )
 
     async def test_backfill_campaign_content(
@@ -232,6 +270,8 @@ class TestCampaignOrchestrationRoutes:
         mock_service.trigger_content_pipeline.assert_awaited_once_with(
             sample_campaign.id,
             mode="backfill_missing",
+            countries=None,
+            states=None,
         )
 
     async def test_publish_campaign_blogs(

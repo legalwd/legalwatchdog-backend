@@ -329,6 +329,111 @@ class TestPublishCampaignBlogsTask:
         assert result == [jurisdiction_id]
         mock_db.exec.assert_called_once()
 
+    def test_generate_campaign_content_task_with_geo_filters(self):
+        """Geographic filters passed to task must propagate to selection and persist."""
+        campaign_id = uuid4()
+        jurisdiction_id = uuid4()
+        campaign = MagicMock(id=campaign_id, stats=None)
+
+        mock_db = MagicMock()
+        mock_db.exec.side_effect = [
+            MagicMock(first=MagicMock(return_value=campaign)),
+            MagicMock(all=MagicMock(return_value=[jurisdiction_id])),
+        ]
+        mock_session = MagicMock()
+        mock_session.__enter__.return_value = mock_db
+        mock_session.__exit__.return_value = False
+
+        with (
+            patch.object(campaign_tasks_module, "SyncSessionLocal", return_value=mock_session),
+            patch.object(
+                campaign_tasks_module, "_select_campaign_blog_target_ids"
+            ) as mock_select_targets,
+            patch.object(campaign_tasks_module, "syncify_generate_blog") as mock_generate_blog,
+            patch.object(campaign_tasks_module, "_publish_progress"),
+        ):
+            mock_select_targets.return_value = [jurisdiction_id]
+            mock_generate_blog.return_value = {"status": "success"}
+
+            result = generate_campaign_content_task.run(
+                str(campaign_id),
+                "run-1",
+                "run",
+                countries=["US"],
+                states=["CA"],
+            )
+
+            assert result["status"] == "completed"
+            mock_select_targets.assert_called_once_with(mock_db, campaign_id, "run", ["US"], ["CA"])
+            assert campaign.stats["content_pipeline"]["target_countries"] == ["US"]
+            assert campaign.stats["content_pipeline"]["target_states"] == ["CA"]
+
+
+class TestSelectCampaignBlogTargetIdsFiltering:
+    """Verify target selection respects geographical constraints and hierarchy."""
+
+    def test_select_campaign_blog_target_ids_filters_by_country_and_state(self):
+        campaign_id = uuid4()
+
+        us_id = uuid4()
+        california_id = uuid4()
+        mexico_id = uuid4()
+        nuevo_leon_id = uuid4()
+
+        us = MagicMock()
+        us.id = us_id
+        us.campaign_id = campaign_id
+        us.parent_id = None
+        us.name = "United States"
+
+        california = MagicMock()
+        california.id = california_id
+        california.campaign_id = campaign_id
+        california.parent_id = us_id
+        california.name = "California"
+
+        mexico = MagicMock()
+        mexico.id = mexico_id
+        mexico.campaign_id = campaign_id
+        mexico.parent_id = None
+        mexico.name = "Mexico"
+
+        nuevo_leon = MagicMock()
+        nuevo_leon.id = nuevo_leon_id
+        nuevo_leon.campaign_id = campaign_id
+        nuevo_leon.parent_id = mexico_id
+        nuevo_leon.name = "Nuevo Leon"
+
+        mock_db = MagicMock()
+
+        # Case 1: Filter by country "Mexico" / "MX"
+        mock_db.exec.side_effect = [
+            MagicMock(all=MagicMock(return_value=[california_id, nuevo_leon_id])),
+            MagicMock(all=MagicMock(return_value=[us, california, mexico, nuevo_leon])),
+        ]
+        result_mx = _select_campaign_blog_target_ids(mock_db, campaign_id, "run", countries=["MX"])
+        assert result_mx == [nuevo_leon_id]
+
+        # Case 2: Filter by state "California"
+        mock_db.exec.side_effect = [
+            MagicMock(all=MagicMock(return_value=[california_id, nuevo_leon_id])),
+            MagicMock(all=MagicMock(return_value=[us, california, mexico, nuevo_leon])),
+        ]
+        result_ca = _select_campaign_blog_target_ids(
+            mock_db, campaign_id, "run", states=["California"]
+        )
+        assert result_ca == [california_id]
+
+        # Case 3: Filter by country "US" and state "California"
+        mock_db.exec.side_effect = [
+            MagicMock(all=MagicMock(return_value=[california_id, nuevo_leon_id])),
+            MagicMock(all=MagicMock(return_value=[us, california, mexico, nuevo_leon])),
+        ]
+        result_us_ca = _select_campaign_blog_target_ids(
+            mock_db, campaign_id, "run", countries=["US"], states=["California"]
+        )
+        assert result_us_ca == [california_id]
+
 
 class TestRetrySourcesAsync:
     """Regression coverage for retrying source verification."""

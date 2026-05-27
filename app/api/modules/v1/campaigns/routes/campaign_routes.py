@@ -19,6 +19,7 @@ from app.api.modules.v1.campaigns.pipelines.base import CampaignPipelineRunner
 from app.api.modules.v1.campaigns.pipelines.factory import get_pipeline_runner
 from app.api.modules.v1.campaigns.schemas.campaign_schema import (
     CampaignBlogBatchPublishRequest,
+    CampaignContentTriggerRequest,
     CampaignCreateRequest,
     CampaignListResponse,
     CampaignResponse,
@@ -396,12 +397,20 @@ get_campaign_status._custom_success = campaign_status_custom_success
 )
 async def run_campaign_content(
     campaign_id: UUID,
+    payload: Optional[CampaignContentTriggerRequest] = None,
     current_user: User = Depends(require_superadmin),
     db: AsyncSession = Depends(get_db),
 ):
     """Queue a campaign-level content generation run."""
     service = CampaignContentService(db)
-    result = await service.trigger_content_pipeline(campaign_id, mode="run")
+    countries = payload.countries if payload else None
+    states = payload.states if payload else None
+    result = await service.trigger_content_pipeline(
+        campaign_id,
+        mode="run",
+        countries=countries,
+        states=states,
+    )
     return success_response(
         status_code=status.HTTP_202_ACCEPTED,
         message="Campaign content pipeline queued.",
@@ -420,12 +429,20 @@ run_campaign_content._custom_success = run_campaign_content_custom_success
 )
 async def retry_failed_campaign_content(
     campaign_id: UUID,
+    payload: Optional[CampaignContentTriggerRequest] = None,
     current_user: User = Depends(require_superadmin),
     db: AsyncSession = Depends(get_db),
 ):
     """Retry only the jurisdictions that failed in the latest content run."""
     service = CampaignContentService(db)
-    result = await service.trigger_content_pipeline(campaign_id, mode="retry_failed")
+    countries = payload.countries if payload else None
+    states = payload.states if payload else None
+    result = await service.trigger_content_pipeline(
+        campaign_id,
+        mode="retry_failed",
+        countries=countries,
+        states=states,
+    )
     return success_response(
         status_code=status.HTTP_202_ACCEPTED,
         message="Failed campaign content jobs queued for retry.",
@@ -444,12 +461,20 @@ retry_failed_campaign_content._custom_success = retry_failed_campaign_content_cu
 )
 async def backfill_campaign_content(
     campaign_id: UUID,
+    payload: Optional[CampaignContentTriggerRequest] = None,
     current_user: User = Depends(require_superadmin),
     db: AsyncSession = Depends(get_db),
 ):
     """Generate missing campaign blogs from existing jurisdiction state."""
     service = CampaignContentService(db)
-    result = await service.trigger_content_pipeline(campaign_id, mode="backfill_missing")
+    countries = payload.countries if payload else None
+    states = payload.states if payload else None
+    result = await service.trigger_content_pipeline(
+        campaign_id,
+        mode="backfill_missing",
+        countries=countries,
+        states=states,
+    )
     return success_response(
         status_code=status.HTTP_202_ACCEPTED,
         message="Missing campaign blog generation queued.",
