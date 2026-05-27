@@ -356,6 +356,8 @@ def _persist_content_pipeline_stats(
     eligible_jurisdictions: int | None = None,
     total_jurisdictions: int | None = None,
     error_summary: str | None = None,
+    countries: list[str] | None = None,
+    states: list[str] | None = None,
 ) -> None:
     """Persist content pipeline fields on campaign.stats."""
     campaign.stats = _merge_content_pipeline_stats(
@@ -370,6 +372,15 @@ def _persist_content_pipeline_stats(
         total_jurisdictions=total_jurisdictions,
         error_summary=error_summary,
     )
+    # Also merge countries and states into campaign.stats["content_pipeline"]
+    if isinstance(campaign.stats, dict) and "content_pipeline" in campaign.stats:
+        cp = dict(campaign.stats["content_pipeline"])
+        if countries is not None:
+            cp["target_countries"] = countries
+        if states is not None:
+            cp["target_states"] = states
+        campaign.stats["content_pipeline"] = cp
+
     campaign.updated_at = datetime.now(timezone.utc)
     db.add(campaign)
 
@@ -468,8 +479,17 @@ def syncify_generate_blog(db, jurisdiction_id: UUID) -> dict:
         }
 
 
-def _select_campaign_blog_target_ids(db, campaign_id: UUID, mode: str) -> list[UUID]:
-    """Return jurisdiction IDs that need campaign blog generation."""
+def _select_campaign_blog_target_ids(
+    db,
+    campaign_id: UUID,
+    mode: str,
+    countries: list[str] | None = None,
+    states: list[str] | None = None,
+) -> list[UUID]:
+    """Return jurisdiction IDs that need campaign blog generation.
+
+    Supports optional country/state filtering.
+    """
     from app.api.modules.v1.jurisdictions.models.jurisdiction_blog_post import (
         JurisdictionBlogPost,
     )
@@ -511,7 +531,79 @@ def _select_campaign_blog_target_ids(db, campaign_id: UUID, mode: str) -> list[U
             .distinct()
         )
 
-    return list(db.exec(stmt).all())
+    all_eligible_ids = list(db.exec(stmt).all())
+    if not all_eligible_ids:
+        return []
+
+    # If no country/state filters are active, return the full list immediately
+    if not countries and not states:
+        return all_eligible_ids
+
+    # Memory-based hierarchical resolver for robust SQLite / Postgres compat
+    # 1. Load all jurisdictions in the campaign to construct tree
+    all_jur_stmt = select(Jurisdiction).where(Jurisdiction.campaign_id == campaign_id)
+    jurisdictions = db.exec(all_jur_stmt).all()
+    jur_map = {j.id: j for j in jurisdictions}
+
+    # 2. Helper to traverse hierarchy and resolve (country_name, state_name)
+    def resolve_hierarchy(jur) -> tuple[str | None, str | None]:
+        curr = jur
+        path = []
+        while curr:
+            path.append(curr)
+            if curr.parent_id:
+                curr = jur_map.get(curr.parent_id)
+            else:
+                curr = None
+
+        country_name = path[-1].name if path else None
+        state_name = path[-2].name if len(path) >= 2 else None
+        return country_name, state_name
+
+    # 3. Normalize filters using TaxonomyGeoValidator
+    from app.api.modules.v1.campaigns.service.taxonomy_geo_validator import TaxonomyGeoValidator
+
+    geo_validator = TaxonomyGeoValidator()
+
+    normalized_countries = set()
+    if countries:
+        for c in countries:
+            resolved = geo_validator._resolve_country(c)
+            if resolved:
+                normalized_countries.add(resolved["name"].upper())
+                normalized_countries.add(resolved["iso_code"].upper())
+            else:
+                normalized_countries.add(c.strip().upper())
+
+    normalized_states = set()
+    if states:
+        for s in states:
+            normalized_states.add(s.strip().upper())
+
+    # 4. Filter the eligible jurisdiction IDs
+    filtered_ids = []
+    for j_id in all_eligible_ids:
+        j = jur_map.get(j_id)
+        if not j:
+            continue
+
+        country_name, state_name = resolve_hierarchy(j)
+
+        if normalized_countries:
+            if not country_name or country_name.upper() not in normalized_countries:
+                continue
+
+        if normalized_states:
+            if state_name:
+                if state_name.upper() not in normalized_states:
+                    continue
+            else:
+                if j.name.upper() not in normalized_states:
+                    continue
+
+        filtered_ids.append(j_id)
+
+    return filtered_ids
 
 
 @celery_app.task(bind=True, queue="processing", max_retries=3, default_retry_delay=60)
@@ -520,6 +612,8 @@ def generate_campaign_content_task(
     campaign_id: str,
     run_id: str | None = None,
     mode: str | None = None,
+    countries: list[str] | None = None,
+    states: list[str] | None = None,
 ) -> dict:
     """Generate or backfill blog posts for all campaign jurisdictions.
 
@@ -533,6 +627,8 @@ def generate_campaign_content_task(
         campaign_id: Campaign UUID string.
         run_id: Optional run identifier for tracking.
         mode: One of "run", "retry_failed", "backfill_missing".
+        countries: Optional list of countries to filter by.
+        states: Optional list of states to filter by.
 
     Returns:
         dict: Summary with success/failed counts.
@@ -575,6 +671,8 @@ def generate_campaign_content_task(
                     failed_count=0,
                     eligible_jurisdictions=0,
                     total_jurisdictions=0,
+                    countries=countries,
+                    states=states,
                 )
                 db.commit()
                 _publish_progress(
@@ -596,7 +694,9 @@ def generate_campaign_content_task(
                     "skipped": 0,
                 }
 
-            target_ids = _select_campaign_blog_target_ids(db, campaign_uuid, effective_mode)
+            target_ids = _select_campaign_blog_target_ids(
+                db, campaign_uuid, effective_mode, countries, states
+            )
 
             if not target_ids:
                 logger.info(
@@ -615,6 +715,8 @@ def generate_campaign_content_task(
                     failed_count=0,
                     eligible_jurisdictions=0,
                     total_jurisdictions=total_jurisdictions,
+                    countries=countries,
+                    states=states,
                 )
                 db.commit()
                 _publish_progress(
@@ -661,6 +763,8 @@ def generate_campaign_content_task(
                 eligible_jurisdictions=total_targets,
                 total_jurisdictions=total_jurisdictions,
                 error_summary="",
+                countries=countries,
+                states=states,
             )
             db.commit()
             _publish_progress(
@@ -711,6 +815,8 @@ def generate_campaign_content_task(
                         failed_count=failed_count,
                         eligible_jurisdictions=total_targets,
                         total_jurisdictions=total_jurisdictions,
+                        countries=countries,
+                        states=states,
                     )
                     db.commit()
 
@@ -733,6 +839,8 @@ def generate_campaign_content_task(
                 eligible_jurisdictions=total,
                 total_jurisdictions=total_jurisdictions,
                 error_summary=error_summary,
+                countries=countries,
+                states=states,
             )
             db.add(
                 CampaignExecutionLog(
@@ -825,6 +933,8 @@ def generate_campaign_content_task(
                             if isinstance(existing_pipeline, dict)
                             else None,
                             error_summary=error_summary,
+                            countries=countries,
+                            states=states,
                         )
                         db.add(
                             CampaignExecutionLog(

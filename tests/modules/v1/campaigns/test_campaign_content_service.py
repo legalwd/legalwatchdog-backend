@@ -90,3 +90,43 @@ class TestCampaignContentService:
         assert summary["last_run_mode"] == "backfill_missing"
         assert summary["last_run_failed"] == 2
         assert summary["last_error_summary"] == "Campaign blog generation completed with errors."
+
+    async def test_trigger_content_pipeline_with_geographic_filters(self, db_session_mock):
+        """Passing countries/states filters should forward to Celery and store in stats."""
+        campaign_id = uuid.uuid4()
+        campaign = Campaign(
+            id=campaign_id,
+            organization_id=uuid.uuid4(),
+            name="Test Campaign",
+        )
+        db_session_mock.get = AsyncMock(return_value=campaign)
+
+        service = CampaignContentService(db_session_mock)
+
+        with patch(
+            "app.api.modules.v1.campaigns.service.campaign_content_service.celery_app.send_task"
+        ) as mock_send_task:
+            mock_send_task.return_value.id = "content-task-id"
+
+            result = await service.trigger_content_pipeline(
+                campaign_id,
+                mode="run",
+                countries=["MX", "Canada"],
+                states=["CA-BC", "Nuevo Leon"],
+            )
+
+        assert result["status"] == "queued"
+        assert result["task_id"] == "content-task-id"
+        assert result["mode"] == "run"
+        assert campaign.stats["content_pipeline"]["status"] == "PENDING"
+        assert campaign.stats["content_pipeline"]["task_id"] == "content-task-id"
+        assert campaign.stats["content_pipeline"]["target_countries"] == ["MX", "Canada"]
+        assert campaign.stats["content_pipeline"]["target_states"] == ["CA-BC", "Nuevo Leon"]
+
+        mock_send_task.assert_called_once_with(
+            "app.api.modules.v1.campaigns.tasks.campaign_tasks.generate_campaign_content_task",
+            args=[str(campaign_id), mock_send_task.call_args[1]["args"][1], "run"],
+            kwargs={"countries": ["MX", "Canada"], "states": ["CA-BC", "Nuevo Leon"]},
+            queue="processing",
+        )
+        db_session_mock.commit.assert_awaited_once()

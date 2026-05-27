@@ -51,6 +51,8 @@ class CampaignContentService:
         eligible_jurisdictions: int | None = None,
         total_jurisdictions: int | None = None,
         error_summary: str | None = None,
+        countries: list[str] | None = None,
+        states: list[str] | None = None,
     ) -> dict[str, Any]:
         """Merge campaign content-pipeline metadata into the campaign stats JSON."""
         new_stats = dict(stats) if isinstance(stats, dict) else {}
@@ -78,6 +80,10 @@ class CampaignContentService:
             content_pipeline["total_jurisdictions"] = total_jurisdictions
         if error_summary is not None:
             content_pipeline["error_summary"] = error_summary
+        if countries is not None:
+            content_pipeline["target_countries"] = countries
+        if states is not None:
+            content_pipeline["target_states"] = states
 
         new_stats["content_pipeline"] = content_pipeline
         return new_stats
@@ -99,7 +105,14 @@ class CampaignContentService:
 
         return (datetime.now(timezone.utc) - updated_at).total_seconds() < cls.ACTIVE_WINDOW_SECONDS
 
-    async def trigger_content_pipeline(self, campaign_id: UUID, *, mode: str) -> dict[str, Any]:
+    async def trigger_content_pipeline(
+        self,
+        campaign_id: UUID,
+        *,
+        mode: str,
+        countries: list[str] | None = None,
+        states: list[str] | None = None,
+    ) -> dict[str, Any]:
         """Queue campaign blog generation in a dedicated downstream task."""
         if mode not in self.VALID_MODES:
             raise ProcessingError(message=f"Unsupported campaign content mode '{mode}'.")
@@ -123,6 +136,7 @@ class CampaignContentService:
         task = celery_app.send_task(
             self.TASK_NAME,
             args=[str(campaign_id), run_id, mode],
+            kwargs={"countries": countries, "states": states},
             queue="processing",
         )
 
@@ -132,6 +146,8 @@ class CampaignContentService:
             run_id=run_id,
             task_id=task.id,
             mode=mode,
+            countries=countries,
+            states=states,
         )
         self.db.add(campaign)
         await self.db.commit()

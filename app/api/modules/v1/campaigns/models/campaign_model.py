@@ -108,6 +108,14 @@ class Campaign(SQLModel, table=True):
     monitor_cadence: Optional[str] = Field(default=None, max_length=100)
     sources_per_jurisdiction: int = Field(default=5, ge=1, le=20)
     max_jurisdictions: int = Field(default=15000, ge=1)
+    target_countries: Optional[list[str]] = Field(
+        default=None,
+        sa_column=Column(JSONB, nullable=True),
+    )
+    target_states: Optional[list[str]] = Field(
+        default=None,
+        sa_column=Column(JSONB, nullable=True),
+    )
 
     status: CampaignStatus = Field(default=CampaignStatus.DRAFT)
     taxonomy_json: Optional[Dict[str, Any]] = Field(

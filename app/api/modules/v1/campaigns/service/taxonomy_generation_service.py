@@ -567,6 +567,16 @@ class TaxonomyGenerationService:
         if language:
             locale_parts.append(f"language: {language}")
 
+        target_countries = getattr(campaign, "target_countries", None)
+        if target_countries:
+            countries_str = ", ".join(target_countries)
+            locale_parts.append(f"ONLY target these countries (names or codes): {countries_str}")
+
+        target_states = getattr(campaign, "target_states", None)
+        if target_states:
+            states_str = ", ".join(target_states)
+            locale_parts.append(f"ONLY target these states/subdivisions: {states_str}")
+
         locale_hints = ""
         if locale_parts:
             locale_hints = "- locale_hints: " + ", ".join(locale_parts) + "\n"
@@ -683,6 +693,65 @@ class TaxonomyGenerationService:
 
         taxonomy_dict = taxonomy_tree.model_dump(mode="json")
         geo_result = geo_validator.validate_and_normalize(taxonomy_dict)
+
+        # Filter by campaign target_countries and target_states if specified
+        target_countries = getattr(campaign, "target_countries", None)
+        target_states = getattr(campaign, "target_states", None)
+
+        if (target_countries or target_states) and isinstance(geo_result.normalized_taxonomy, dict):
+            filtered_nodes = []
+            normalized_target_countries = (
+                {c.strip().upper() for c in target_countries} if target_countries else set()
+            )
+            normalized_target_states = (
+                {s.strip().upper() for s in target_states} if target_states else set()
+            )
+
+            for node in geo_result.normalized_taxonomy.get("nodes", []):
+                country_name = node.get("name", "").strip().upper()
+                country_iso = node.get("iso_code", "").strip().upper()
+
+                # If target_countries is set, must match either name or ISO code
+                if normalized_target_countries:
+                    if (
+                        country_name not in normalized_target_countries
+                        and country_iso not in normalized_target_countries
+                    ):
+                        continue  # Skip this country
+
+                # If target_states is set, filter subdivisions (children)
+                if normalized_target_states:
+                    filtered_children = []
+                    for child in node.get("children", []):
+                        child_name = child.get("name", "").strip().upper()
+                        child_iso = child.get("iso_code", "").strip().upper()
+
+                        # Match by name or code
+                        if (
+                            child_name in normalized_target_states
+                            or child_iso in normalized_target_states
+                        ):
+                            filtered_children.append(child)
+                        else:
+                            # Also check if child_iso has a country code prefix like "US-CA" vs "CA"
+                            short_child_iso = (
+                                child_iso.split("-")[-1] if "-" in child_iso else child_iso
+                            )
+                            if short_child_iso in normalized_target_states:
+                                filtered_children.append(child)
+                    node["children"] = filtered_children
+
+                filtered_nodes.append(node)
+            geo_result.normalized_taxonomy["nodes"] = filtered_nodes
+
+            # Re-calculate distinct countries and top-level matched stats
+            seen_countries = {n.get("name").lower() for n in filtered_nodes if n.get("name")}
+            geo_result.stats["distinct_countries"] = len(seen_countries)
+            geo_result.stats["countries_matched"] = len(filtered_nodes)
+            geo_result.stats["subdivisions_matched"] = sum(
+                len(n.get("children", [])) for n in filtered_nodes
+            )
+
         return validation, geo_result
 
     @staticmethod

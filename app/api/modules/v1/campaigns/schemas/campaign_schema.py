@@ -74,6 +74,14 @@ class CampaignCreateRequest(BaseModel):
         ge=1,
         description="Upper bound on jurisdiction count",
     )
+    target_countries: Optional[List[str]] = Field(
+        default=None,
+        description="Optional list of country names or ISO alpha-2 codes to target",
+    )
+    target_states: Optional[List[str]] = Field(
+        default=None,
+        description="Optional list of state names or subdivision codes to target",
+    )
 
 
 class CampaignUpdateRequest(BaseModel):
@@ -94,6 +102,26 @@ class CampaignUpdateRequest(BaseModel):
     monitor_cadence: Optional[str] = Field(default=None, max_length=100)
     sources_per_jurisdiction: Optional[int] = Field(default=None, ge=1, le=20)
     max_jurisdictions: Optional[int] = Field(default=None, ge=1)
+    target_countries: Optional[List[str]] = Field(default=None)
+    target_states: Optional[List[str]] = Field(default=None)
+
+
+class CampaignContentTriggerRequest(BaseModel):
+    """Request schema for triggering campaign blog generation with optional geo targeting.
+
+    Attributes:
+        countries: Optional list of country names or ISO alpha-2 codes.
+        states: Optional list of state names or subdivision codes.
+    """
+
+    countries: Optional[List[str]] = Field(
+        default=None,
+        description="Filter by country names or ISO alpha-2 codes.",
+    )
+    states: Optional[List[str]] = Field(
+        default=None,
+        description="Filter by state names or subdivision codes.",
+    )
 
 
 class ExecutionLogResponse(BaseModel):
@@ -150,6 +178,8 @@ class CampaignResponse(BaseModel):
     monitor_cadence: Optional[str] = None
     sources_per_jurisdiction: int
     max_jurisdictions: int
+    target_countries: Optional[List[str]] = None
+    target_states: Optional[List[str]] = None
     status: CampaignStatus
     taxonomy_json: Optional[Dict[str, Any]] = None
     stats: Optional[Dict[str, Any]] = None
