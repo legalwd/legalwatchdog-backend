@@ -31,7 +31,6 @@ ENV/
 # VSCode
 .history/
 *.code-workspace
-.vscode/
 
 # JetBrains IDEs (PyCharm, IntelliJ)
 .idea/
@@ -129,4 +128,4 @@ nltk_data/
 
 .copilot-tracking/
 public/
-branch_structure.json
+.vscode/
