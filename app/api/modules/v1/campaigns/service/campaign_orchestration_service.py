@@ -577,6 +577,7 @@ class CampaignOrchestrationService(CampaignPipelineRunner):
 
         resettable_states = {
             CampaignStatus.FAILED,
+            CampaignStatus.CANCELLED,
             CampaignStatus.MONITORING,
             CampaignStatus.HYDRATING,
             CampaignStatus.DISCOVERING_SOURCES,
@@ -588,8 +589,8 @@ class CampaignOrchestrationService(CampaignPipelineRunner):
             raise ProcessingError(
                 message=(
                     f"Campaign in state '{campaign.status.value}' cannot be reset. "
-                    "Only FAILED, MONITORING, HYDRATING, DISCOVERING_SOURCES, SCRAPING, "
-                    "PUBLISHING, or PAUSED campaigns can be recovered."
+                    "Only FAILED, CANCELLED, MONITORING, HYDRATING, DISCOVERING_SOURCES, "
+                    "SCRAPING, PUBLISHING, or PAUSED campaigns can be recovered."
                 )
             )
 
@@ -629,6 +630,7 @@ class CampaignOrchestrationService(CampaignPipelineRunner):
             ProcessingError: Target state invalid or campaign in non-recoverable state.
         """
         valid_targets = {
+            CampaignStatus.DRAFT,
             CampaignStatus.DISCOVERING_SOURCES,
             CampaignStatus.SCRAPING,
             CampaignStatus.PUBLISHING,
@@ -644,6 +646,7 @@ class CampaignOrchestrationService(CampaignPipelineRunner):
 
         resettable_states = {
             CampaignStatus.FAILED,
+            CampaignStatus.CANCELLED,
             CampaignStatus.MONITORING,
             CampaignStatus.HYDRATING,
             CampaignStatus.DISCOVERING_SOURCES,
@@ -655,8 +658,8 @@ class CampaignOrchestrationService(CampaignPipelineRunner):
             raise ProcessingError(
                 message=(
                     f"Campaign in state '{campaign.status.value}' cannot be reset. "
-                    "Only FAILED, MONITORING, HYDRATING, DISCOVERING_SOURCES, SCRAPING, "
-                    "PUBLISHING, or PAUSED campaigns can be recovered."
+                    "Only FAILED, CANCELLED, MONITORING, HYDRATING, DISCOVERING_SOURCES, "
+                    "SCRAPING, PUBLISHING, or PAUSED campaigns can be recovered."
                 )
             )
 
@@ -674,6 +677,15 @@ class CampaignOrchestrationService(CampaignPipelineRunner):
             stats = dict(campaign.stats)
             stats.pop("pipeline_control", None)
             campaign.stats = stats
+
+        # Full reset to DRAFT: wipe taxonomy and approval data so the campaign
+        # can be re-configured and re-launched from scratch.
+        if target_status == CampaignStatus.DRAFT:
+            campaign.taxonomy_json = None
+            campaign.generation_model = None
+            campaign.generation_config_snapshot = None
+            campaign.taxonomy_approved_by = None
+            campaign.taxonomy_approved_at = None
 
         self.db.add(campaign)
         await self.db.commit()
