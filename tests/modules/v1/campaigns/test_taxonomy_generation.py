@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.api.core.custom_exceptions.exceptions import ProcessingError
 from app.api.modules.v1.campaigns.models.campaign_model import (
     Campaign,
     CampaignMonitorBackend,
@@ -607,3 +608,122 @@ class TestBalancedTrimming:
         assert len(trimmed[0].children) >= 1
         assert len(trimmed[1].children) >= 1
         assert TaxonomyGenerationService._count_nodes(trimmed) <= 6
+
+
+class TestGeoTargetedCoverageBypass:
+    """Geo-targeted campaigns must bypass the global country-coverage gate.
+
+    When a campaign has target_countries or target_states set, the taxonomy is
+    intentionally filtered to a small geography.  Requiring 180+ countries for
+    those campaigns would always produce a spurious ProcessingError.
+    """
+
+    def _make_global_campaign(self, max_jurisdictions: int = 15000) -> Campaign:
+        """Build an unrestricted global campaign."""
+        now = datetime.now(timezone.utc)
+        campaign = Campaign(
+            id=uuid.uuid4(),
+            organization_id=ORG_ID,
+            name="Global EOR",
+            industry="EOR",
+            domain_description="Global employer of record",
+            target_depth=CampaignTargetDepth.COUNTRY,
+            monitor_backend=CampaignMonitorBackend.CELERY_BEAT,
+            sources_per_jurisdiction=5,
+            max_jurisdictions=max_jurisdictions,
+            status=CampaignStatus.DRAFT,
+            created_by=USER_ID,
+            created_at=now,
+            updated_at=now,
+        )
+        campaign.execution_logs = []
+        return campaign
+
+    def _with_target_countries(self, campaign: Campaign, countries: list[str]) -> Campaign:
+        campaign.target_countries = countries
+        return campaign
+
+    def _with_target_states(self, campaign: Campaign, states: list[str]) -> Campaign:
+        campaign.target_states = states
+        return campaign
+
+    # ------------------------------------------------------------------
+    # _required_country_coverage
+    # ------------------------------------------------------------------
+
+    def test_required_coverage_zero_when_target_countries_set(self):
+        """target_countries → required coverage must be 0."""
+        campaign = self._with_target_countries(
+            self._make_global_campaign(), ["US", "CA", "GB", "DE", "FR", "AU"]
+        )
+        assert TaxonomyGenerationService._required_country_coverage(campaign) == 0
+
+    def test_required_coverage_zero_when_target_states_set(self):
+        """target_states → required coverage must be 0."""
+        campaign = self._with_target_states(self._make_global_campaign(), ["CA", "NY", "TX"])
+        assert TaxonomyGenerationService._required_country_coverage(campaign) == 0
+
+    def test_required_coverage_zero_when_both_targets_set(self):
+        """target_countries + target_states together → required coverage must be 0."""
+        campaign = self._make_global_campaign()
+        campaign.target_countries = ["US"]
+        campaign.target_states = ["CA", "NY"]
+        assert TaxonomyGenerationService._required_country_coverage(campaign) == 0
+
+    def test_required_coverage_nonzero_for_global_campaign(self):
+        """Unrestricted global campaign with sufficient budget → coverage is 180."""
+        campaign = self._make_global_campaign(max_jurisdictions=15000)
+        # No target_countries / target_states set
+        required = TaxonomyGenerationService._required_country_coverage(campaign)
+        assert required > 0
+
+    def test_required_coverage_zero_for_small_budget_global(self):
+        """Global campaign whose budget < threshold → coverage gate is skipped."""
+        campaign = self._make_global_campaign(max_jurisdictions=10)
+        required = TaxonomyGenerationService._required_country_coverage(campaign)
+        assert required == 0
+
+    # ------------------------------------------------------------------
+    # _enforce_country_coverage
+    # ------------------------------------------------------------------
+
+    def test_enforce_does_not_raise_for_geo_targeted_campaign(self):
+        """Geo-targeted campaign with only 6 countries must NOT raise."""
+        campaign = self._with_target_countries(
+            self._make_global_campaign(), ["US", "CA", "GB", "DE", "FR", "AU"]
+        )
+        service = TaxonomyGenerationService.__new__(TaxonomyGenerationService)
+        # Should not raise regardless of distinct_countries count
+        service._enforce_country_coverage(campaign, {"distinct_countries": 6})
+
+    def test_enforce_raises_for_global_campaign_below_threshold(self):
+        """Global campaign with < 180 countries must raise ProcessingError."""
+
+        campaign = self._make_global_campaign(max_jurisdictions=15000)
+        service = TaxonomyGenerationService.__new__(TaxonomyGenerationService)
+
+        with patch(
+            "app.api.modules.v1.campaigns.service.taxonomy_generation_service.settings"
+        ) as mock_settings:
+            mock_settings.CAMPAIGN_TAXONOMY_ENFORCE_GLOBAL_COVERAGE = True
+            mock_settings.CAMPAIGN_TAXONOMY_MIN_COUNTRIES_COUNTRY = 180
+            mock_settings.CAMPAIGN_TAXONOMY_MIN_COUNTRIES_STATE = 180
+
+            with pytest.raises(ProcessingError, match="below the required threshold"):
+                service._enforce_country_coverage(campaign, {"distinct_countries": 6})
+
+    def test_enforce_passes_for_global_campaign_at_threshold(self):
+        """Global campaign that meets the threshold must NOT raise."""
+
+        campaign = self._make_global_campaign(max_jurisdictions=15000)
+        service = TaxonomyGenerationService.__new__(TaxonomyGenerationService)
+
+        with patch(
+            "app.api.modules.v1.campaigns.service.taxonomy_generation_service.settings"
+        ) as mock_settings:
+            mock_settings.CAMPAIGN_TAXONOMY_ENFORCE_GLOBAL_COVERAGE = True
+            mock_settings.CAMPAIGN_TAXONOMY_MIN_COUNTRIES_COUNTRY = 180
+            mock_settings.CAMPAIGN_TAXONOMY_MIN_COUNTRIES_STATE = 180
+
+            # Exactly at threshold — should not raise
+            service._enforce_country_coverage(campaign, {"distinct_countries": 180})
