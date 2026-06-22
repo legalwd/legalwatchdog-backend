@@ -1017,7 +1017,18 @@ class TaxonomyGenerationService:
 
         Global coverage enforcement is only meaningful for COUNTRY/STATE depths and
         campaigns with budgets at least as large as the required threshold.
+
+        Geo-targeted campaigns (those with ``target_countries`` or ``target_states``
+        explicitly set) are intentionally scoped to a narrow geography, so the global
+        country-coverage gate is not applied — requiring 180+ countries for a campaign
+        that targets only 6 would always produce a false failure.
         """
+        # Geo-targeted campaigns bypass the global coverage gate entirely.
+        target_countries = getattr(campaign, "target_countries", None)
+        target_states = getattr(campaign, "target_states", None)
+        if target_countries or target_states:
+            return 0
+
         if campaign.target_depth == CampaignTargetDepth.COUNTRY:
             required = settings.CAMPAIGN_TAXONOMY_MIN_COUNTRIES_COUNTRY
         elif campaign.target_depth == CampaignTargetDepth.STATE:
