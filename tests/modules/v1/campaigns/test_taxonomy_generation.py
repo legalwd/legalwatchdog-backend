@@ -639,9 +639,7 @@ class TestGeoTargetedCoverageBypass:
         campaign.execution_logs = []
         return campaign
 
-    def _with_target_countries(
-        self, campaign: Campaign, countries: list[str]
-    ) -> Campaign:
+    def _with_target_countries(self, campaign: Campaign, countries: list[str]) -> Campaign:
         campaign.target_countries = countries
         return campaign
 
@@ -662,9 +660,7 @@ class TestGeoTargetedCoverageBypass:
 
     def test_required_coverage_zero_when_target_states_set(self):
         """target_states → required coverage must be 0."""
-        campaign = self._with_target_states(
-            self._make_global_campaign(), ["CA", "NY", "TX"]
-        )
+        campaign = self._with_target_states(self._make_global_campaign(), ["CA", "NY", "TX"])
         assert TaxonomyGenerationService._required_country_coverage(campaign) == 0
 
     def test_required_coverage_zero_when_both_targets_set(self):
@@ -731,4 +727,3 @@ class TestGeoTargetedCoverageBypass:
 
             # Exactly at threshold — should not raise
             service._enforce_country_coverage(campaign, {"distinct_countries": 180})
-
