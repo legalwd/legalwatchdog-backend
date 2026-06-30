@@ -101,6 +101,26 @@ def scrape_source_stage1(self, source_id: str, job_id: str) -> dict:
                         source_id, job_id, result["content_hash"], result["minio_key"]
                     )
 
+            if (
+                result.get("status") == "skipped"
+                and current_job
+                and current_job.status == ScrapeJobStatus.PENDING
+                and is_jurisdiction_batch
+            ):
+                logger.warning(
+                    f"Job {job_id} skipped ({result.get('reason', 'unknown')}) "
+                    f"in jurisdiction batch {current_job.jurisdiction_scrape_job_id}. "
+                    "Marking as FAILED to unblock batch."
+                )
+                current_job.status = ScrapeJobStatus.FAILED
+                current_job.completed_at = datetime.now(timezone.utc)
+                current_job.error_message = (
+                    f"Scrape skipped: {result.get('reason', 'unknown')}. "
+                    "Job failed to allow jurisdiction batch to proceed."
+                )
+                db_session.add(current_job)
+                db_session.commit()
+
             if is_jurisdiction_batch:
                 logger.info(
                     f"Checking batch completion for jurisdiction job "
@@ -586,6 +606,24 @@ def monitor_stalled_jobs(self) -> str:
                 job.completed_at = now
                 db.add(job)
                 count += 1
+
+            notified_jurisdictions = set()
+            for stalled_job in stalled_jobs:
+                if (
+                    stalled_job.jurisdiction_scrape_job_id
+                    and stalled_job.jurisdiction_scrape_job_id not in notified_jurisdictions
+                ):
+                    notified_jurisdictions.add(stalled_job.jurisdiction_scrape_job_id)
+                    try:
+                        js_service = JurisdictionScrapingService(db)
+                        js_service.check_batch_completion(stalled_job.jurisdiction_scrape_job_id)
+                    except Exception:
+                        logger.exception(
+                            "check_batch_completion failed for jurisdiction job %s "
+                            "after marking stalled scrape job %s as FAILED",
+                            stalled_job.jurisdiction_scrape_job_id,
+                            stalled_job.id,
+                        )
 
             stalled_jurisdiction_jobs = db.exec(
                 select(JurisdictionScrapeJob).where(
