@@ -24,7 +24,7 @@ from app.api.modules.v1.scraping.models.jurisdiction_scrape_job import (
 from app.api.modules.v1.scraping.models.scrape_job import ScrapeJob, ScrapeJobStatus
 from app.api.modules.v1.scraping.models.source_model import ScrapeFrequency, Source
 from app.api.modules.v1.scraping.utils.hash_utils import calculate_jurisdiction_content_hash
-from app.celery_app import celery_app
+#from app.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +81,7 @@ class JurisdictionScrapingService:
             self.db.commit()
             self.db.refresh(job)
 
+            from app.celery_app import celery_app  # Lazy import
             celery_app.send_task(
                 "app.api.modules.v1.scraping.service.tasks.consolidate_jurisdiction_content",
                 args=[str(job.id)],
@@ -156,6 +157,7 @@ class JurisdictionScrapingService:
         failed_jobs = []
         for source, scrape_job in jobs_to_dispatch:
             try:
+                from app.celery_app import celery_app  # Lazy import
                 celery_app.send_task(
                     "app.api.modules.v1.scraping.service.tasks.scrape_source_stage1",
                     args=[str(source.id), str(scrape_job.id)],
@@ -258,6 +260,7 @@ class JurisdictionScrapingService:
             f"{job.content_hash[:16]}..."
         )
 
+        from app.celery_app import celery_app  # Lazy import
         celery_app.send_task(
             "app.api.modules.v1.scraping.service.tasks.consolidate_jurisdiction_content",
             args=[str(jurisdiction_job_id)],
