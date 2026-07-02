@@ -67,6 +67,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = config(
         "DATABASE_URL", default="postgresql://user:password@localhost/dbname"
     )
+    DB_SSL: bool = config("DB_SSL", default=True, cast=bool)
     # Database connection pool sizing (critical for shared RDS limits)
     DB_POOL_SIZE: int = config("DB_POOL_SIZE", default=5, cast=int)
     DB_MAX_OVERFLOW: int = config("DB_MAX_OVERFLOW", default=5, cast=int)

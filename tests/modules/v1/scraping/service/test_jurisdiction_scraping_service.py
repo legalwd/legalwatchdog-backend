@@ -32,7 +32,7 @@ def test_dispatch_sources_marks_parent_failed_when_all_dispatches_fail():
     service = JurisdictionScrapingService(mock_db)
 
     with patch(
-        "app.api.modules.v1.scraping.service.jurisdiction_scraping_service.celery_app.send_task",
+        "app.celery_app.celery_app.send_task",
         side_effect=RuntimeError("broker unavailable"),
     ):
         dispatched = service._dispatch_sources(job, [source])
@@ -68,9 +68,7 @@ def test_dispatch_sources_commits_jobs_once_before_celery_dispatch():
     mock_db.exec.return_value = MagicMock(first=MagicMock(return_value=None))
     service = JurisdictionScrapingService(mock_db)
 
-    with patch(
-        "app.api.modules.v1.scraping.service.jurisdiction_scraping_service.celery_app.send_task"
-    ) as mock_send_task:
+    with patch("app.celery_app.celery_app.send_task") as mock_send_task:
         dispatched = service._dispatch_sources(job, sources)
 
     assert dispatched == 2

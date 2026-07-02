@@ -48,10 +48,13 @@ def get_db_url(test_mode: bool = False, sync: bool = False) -> str:
 # Async engine for FastAPI endpoints
 DATABASE_URL = get_db_url()
 
+connect_args = {}
 if DB_TYPE == "postgresql":
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
+    if settings.DB_SSL:
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        connect_args["ssl"] = ctx
 
     # Connection pool sizing is env-driven to respect RDS connection limits.
     # With a 30-connection RDS limit:
@@ -69,7 +72,7 @@ if DB_TYPE == "postgresql":
         pool_recycle=settings.DB_POOL_RECYCLE,
         pool_timeout=settings.DB_POOL_TIMEOUT,
         pool_pre_ping=True,
-        connect_args={"ssl": ctx},
+        connect_args=connect_args,
     )
 
     logger.info(
@@ -89,6 +92,10 @@ AsyncSessionLocal = async_sessionmaker(
 # Sync engine for Celery tasks (fallback/testing only)
 SYNC_DATABASE_URL = get_db_url(sync=True)
 
+sync_connect_args = {}
+if DB_TYPE == "postgresql" and settings.DB_SSL:
+    sync_connect_args["sslmode"] = "require"
+
 sync_engine = create_engine(
     SYNC_DATABASE_URL,
     echo=settings.DEBUG,
@@ -98,7 +105,7 @@ sync_engine = create_engine(
     pool_recycle=settings.DB_POOL_RECYCLE,
     pool_timeout=settings.CELERY_DB_POOL_TIMEOUT,
     pool_pre_ping=True,
-    connect_args={"sslmode": "require"},
+    connect_args=sync_connect_args,
 )
 
 logger.info(
@@ -122,7 +129,7 @@ celery_async_engine = create_async_engine(
     future=True,
     poolclass=NullPool,
     pool_pre_ping=True,
-    connect_args={"ssl": ctx},
+    connect_args=connect_args,
 )
 
 CeleryAsyncSessionLocal = async_sessionmaker(

@@ -19,6 +19,10 @@ from sqlmodel import select
 # Setup path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Ensure all models are registered to avoid relation resolution errors
+from app.api.db.model_registry import ensure_model_modules_loaded
+ensure_model_modules_loaded()
+
 # Import models
 from app.api.modules.v1.scraping.models.jurisdiction_scrape_job import (
     JurisdictionScrapeJob,
