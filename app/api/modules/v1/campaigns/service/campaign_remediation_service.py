@@ -9,6 +9,7 @@ from sqlmodel import select
 
 from app.api.core.config import settings
 from app.api.core.custom_exceptions.exceptions import BadRequestError, NotFoundError
+from app.api.core.queues import PROCESSING_QUEUE
 from app.api.modules.v1.campaigns.models.campaign_model import Campaign
 from app.api.modules.v1.campaigns.schemas.campaign_schema import (
     FailedDiscoveryJurisdictionListResponse,
@@ -183,7 +184,7 @@ class CampaignRemediationService:
             celery_app.send_task(
                 "app.api.modules.v1.campaigns.tasks.campaign_tasks.publish_campaign_blogs_task",
                 args=[str(campaign_id)],
-                queue="processing",
+                queue=PROCESSING_QUEUE,
             )
 
         return {
@@ -204,7 +205,7 @@ class CampaignRemediationService:
         return celery_app.send_task(
             "app.api.modules.v1.scraping.service.tasks.dispatch_single_jurisdiction_scrape",
             args=[str(jurisdiction_id)],
-            queue="processing",
+            queue=PROCESSING_QUEUE,
         )
 
     @staticmethod

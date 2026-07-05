@@ -79,6 +79,12 @@ class Settings(BaseSettings):
     CELERY_DB_MAX_OVERFLOW: int = config("CELERY_DB_MAX_OVERFLOW", default=5, cast=int)
     CELERY_DB_POOL_TIMEOUT: int = config("CELERY_DB_POOL_TIMEOUT", default=30, cast=int)
 
+    # Celery queue names (environment-specific to prevent prod/staging cross-contamination)
+    # Override on staging: CELERY_SCRAPING_QUEUE=scraping-staging, etc.
+    CELERY_SCRAPING_QUEUE: str = config("CELERY_SCRAPING_QUEUE", default="scraping")
+    CELERY_PROCESSING_QUEUE: str = config("CELERY_PROCESSING_QUEUE", default="processing")
+    CELERY_PERSISTENCE_QUEUE: str = config("CELERY_PERSISTENCE_QUEUE", default="persistence")
+
     # Redis
     REDIS_URL: str = config("REDIS_URL", default="redis://localhost:6379/0")
     REDIS_RESEND_TTL: int = config("REDIS_RESEND_TTL", default=300, cast=int)

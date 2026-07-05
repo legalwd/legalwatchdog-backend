@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from app.api.core.custom_exceptions.exceptions import ProcessingError, ResourceNotFoundError
+from app.api.core.queues import PROCESSING_QUEUE
 from app.api.modules.v1.campaigns.models.campaign_model import Campaign, CampaignExecutionLog
 from app.api.modules.v1.jurisdictions.models.jurisdiction_blog_post import JurisdictionBlogPost
 from app.api.modules.v1.jurisdictions.models.jurisdiction_model import Jurisdiction
@@ -137,7 +138,7 @@ class CampaignContentService:
             self.TASK_NAME,
             args=[str(campaign_id), run_id, mode],
             kwargs={"countries": countries, "states": states},
-            queue="processing",
+            queue=PROCESSING_QUEUE,
         )
 
         campaign.stats = self.merge_content_pipeline_stats(

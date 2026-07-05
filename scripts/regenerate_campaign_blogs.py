@@ -22,6 +22,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 import app.celery_app  # noqa: E402
+from app.api.core.queues import PROCESSING_QUEUE  # noqa: E402
 from app.api.modules.v1.campaigns.tasks.campaign_tasks import (  # noqa: E402
     generate_campaign_content_task,
 )
@@ -59,7 +60,7 @@ def main():
 
     result = generate_campaign_content_task.apply_async(
         args=[args.campaign_id, run_id, args.mode],
-        queue="processing",
+        queue=PROCESSING_QUEUE,
     )
     logger.info(
         "Task dispatched: id=%s", result.id

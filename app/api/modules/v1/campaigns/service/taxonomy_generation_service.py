@@ -27,6 +27,7 @@ from app.api.core.custom_exceptions.exceptions import (
 from app.api.core.exceptions import OpenRouterError
 from app.api.core.llm.base_provider import LLMResponse
 from app.api.core.llm.llm_manager import LLMManager
+from app.api.core.queues import PROCESSING_QUEUE
 from app.api.modules.v1.campaigns.models.campaign_model import (
     Campaign,
     CampaignStatus,
@@ -266,7 +267,7 @@ class TaxonomyGenerationService:
         try:
             async_result = generate_taxonomy_task.apply_async(
                 args=[str(campaign_id), run_id],
-                queue="processing",
+                queue=PROCESSING_QUEUE,
             )
             snapshot = campaign.generation_config_snapshot or {}
             snapshot["taxonomy_task_id"] = async_result.id

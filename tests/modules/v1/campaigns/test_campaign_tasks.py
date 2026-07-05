@@ -10,6 +10,7 @@ import redis
 import redis.asyncio as aioredis
 
 import app.api.modules.v1.campaigns.tasks.campaign_tasks as campaign_tasks_module
+from app.api.core.queues import PROCESSING_QUEUE
 from app.api.modules.v1.campaigns.models.campaign_model import CampaignStatus
 from app.api.modules.v1.campaigns.tasks.campaign_tasks import (
     FORCE_FAIL_AFTER_RETRIES,
@@ -231,7 +232,7 @@ class TestDispatchCampaignScrapesTask:
         mock_send_task.assert_called_once_with(
             "app.api.modules.v1.scraping.service.tasks.dispatch_single_jurisdiction_scrape",
             args=[str(discovered.id)],
-            queue="processing",
+            queue=PROCESSING_QUEUE,
         )
 
 

@@ -16,6 +16,7 @@ from sqlmodel import Session, select
 from app.api.core.custom_exceptions.exceptions import (
     JobNotFoundError,
 )
+from app.api.core.queues import PROCESSING_QUEUE, SCRAPING_QUEUE
 from app.api.modules.v1.jurisdictions.models.jurisdiction_model import Jurisdiction
 from app.api.modules.v1.scraping.models.jurisdiction_scrape_job import (
     JurisdictionScrapeJob,
@@ -87,7 +88,7 @@ class JurisdictionScrapingService:
             celery_app.send_task(
                 "app.api.modules.v1.scraping.service.tasks.consolidate_jurisdiction_content",
                 args=[str(job.id)],
-                queue="processing",
+                queue=PROCESSING_QUEUE,
             )
             return job
 
@@ -164,7 +165,7 @@ class JurisdictionScrapingService:
                 celery_app.send_task(
                     "app.api.modules.v1.scraping.service.tasks.scrape_source_stage1",
                     args=[str(source.id), str(scrape_job.id)],
-                    queue="scraping",
+                    queue=SCRAPING_QUEUE,
                 )
                 dispatched_count += 1
 
@@ -268,7 +269,7 @@ class JurisdictionScrapingService:
         celery_app.send_task(
             "app.api.modules.v1.scraping.service.tasks.consolidate_jurisdiction_content",
             args=[str(jurisdiction_job_id)],
-            queue="processing",
+            queue=PROCESSING_QUEUE,
         )
 
         return True

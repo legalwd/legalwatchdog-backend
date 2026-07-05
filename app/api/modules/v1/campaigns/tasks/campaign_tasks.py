@@ -15,6 +15,7 @@ from sqlmodel import select
 
 from app.api.core.config import settings
 from app.api.core.custom_exceptions.exceptions import ProcessingError
+from app.api.core.queues import PROCESSING_QUEUE
 from app.api.db.database import CeleryAsyncSessionLocal, SyncSessionLocal
 from app.api.modules.v1.campaigns.models.campaign_model import (
     Campaign,
@@ -387,7 +388,7 @@ def _persist_content_pipeline_stats(
 
 @celery_app.task(
     bind=True,
-    queue="processing",
+    queue=PROCESSING_QUEUE,
     max_retries=3,
     default_retry_delay=60,
     soft_time_limit=settings.CAMPAIGN_TAXONOMY_SOFT_TIME_LIMIT_SECONDS,
@@ -606,7 +607,7 @@ def _select_campaign_blog_target_ids(
     return filtered_ids
 
 
-@celery_app.task(bind=True, queue="processing", max_retries=3, default_retry_delay=60)
+@celery_app.task(bind=True, queue=PROCESSING_QUEUE, max_retries=3, default_retry_delay=60)
 def generate_campaign_content_task(
     self,
     campaign_id: str,
@@ -978,7 +979,7 @@ def generate_campaign_content_task(
         raise self.retry(exc=e, countdown=120)
 
 
-@celery_app.task(bind=True, queue="processing", max_retries=3, default_retry_delay=60)
+@celery_app.task(bind=True, queue=PROCESSING_QUEUE, max_retries=3, default_retry_delay=60)
 def hydrate_campaign_task(self, campaign_id: str, run_id: str | None = None) -> dict:
     """Task to hydrate campaign taxonomy into DB jurisdictions."""
     logger.info("hydrate_campaign_task started for campaign %s (run_id=%s)", campaign_id, run_id)
@@ -1012,7 +1013,7 @@ def hydrate_campaign_task(self, campaign_id: str, run_id: str | None = None) -> 
 
 @celery_app.task(
     bind=True,
-    queue="processing",
+    queue=PROCESSING_QUEUE,
     max_retries=3,
     default_retry_delay=120,
     # 32 jurisdictions × ~17s average = ~544s worst-case sequential.
@@ -1096,7 +1097,7 @@ def discover_sources_task(self, campaign_id: str, run_id: str | None = None) -> 
         raise self.retry(exc=e)
 
 
-@celery_app.task(bind=True, queue="processing", max_retries=3, default_retry_delay=60)
+@celery_app.task(bind=True, queue=PROCESSING_QUEUE, max_retries=3, default_retry_delay=60)
 def dispatch_campaign_scrapes_task(self, campaign_id: str, run_id: str | None = None) -> dict:
     """Task to enqueue scrape jobs for all campaign jurisdictions."""
     logger.info(
@@ -1142,7 +1143,7 @@ def dispatch_campaign_scrapes_task(self, campaign_id: str, run_id: str | None = 
                         "app.api.modules.v1.scraping.service.tasks."
                         "dispatch_single_jurisdiction_scrape",
                         args=[str(jurisdiction.id)],
-                        queue="processing",
+                        queue=PROCESSING_QUEUE,
                     )
                     dispatched_count += 1
                 except Exception as ex:
@@ -1200,7 +1201,7 @@ def dispatch_campaign_scrapes_task(self, campaign_id: str, run_id: str | None = 
         raise self.retry(exc=e)
 
 
-@celery_app.task(bind=True, queue="processing", max_retries=120, default_retry_delay=30)
+@celery_app.task(bind=True, queue=PROCESSING_QUEUE, max_retries=120, default_retry_delay=30)
 def publish_campaign_blogs_task(self, campaign_id: str, run_id: str | None = None) -> dict:
     """Wait for jurisdiction scrapes to complete, then finalize campaign state."""
     logger.info(
@@ -1412,7 +1413,7 @@ def campaign_pipeline_error_handler(
         )
 
 
-@celery_app.task(bind=True, queue="processing", max_retries=3, default_retry_delay=60)
+@celery_app.task(bind=True, queue=PROCESSING_QUEUE, max_retries=3, default_retry_delay=60)
 def retry_unverified_sources_task(self, campaign_id: str, run_id: str | None = None) -> dict:
     """Retry verification of sources that failed due to retryable errors.
 

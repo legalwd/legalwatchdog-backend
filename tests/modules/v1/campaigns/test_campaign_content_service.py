@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.core.queues import PROCESSING_QUEUE
 from app.api.modules.v1.campaigns.models.campaign_model import Campaign, CampaignExecutionLog
 from app.api.modules.v1.campaigns.service.campaign_content_service import CampaignContentService
 
@@ -127,6 +128,6 @@ class TestCampaignContentService:
             "app.api.modules.v1.campaigns.tasks.campaign_tasks.generate_campaign_content_task",
             args=[str(campaign_id), mock_send_task.call_args[1]["args"][1], "run"],
             kwargs={"countries": ["MX", "Canada"], "states": ["CA-BC", "Nuevo Leon"]},
-            queue="processing",
+            queue=PROCESSING_QUEUE,
         )
         db_session_mock.commit.assert_awaited_once()

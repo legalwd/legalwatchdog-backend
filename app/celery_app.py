@@ -2,6 +2,7 @@ from celery import Celery
 from celery.schedules import crontab
 
 from app.api.core.config import settings
+from app.api.core.queues import PERSISTENCE_QUEUE, PROCESSING_QUEUE, SCRAPING_QUEUE
 
 celery_app = Celery(
     "legal_watch_dog",
@@ -34,59 +35,59 @@ celery_app.conf.update(
     ],
     task_routes={
         "app.api.modules.v1.scraping.service.tasks.scrape_source_stage1": {
-            "queue": "scraping",
+            "queue": SCRAPING_QUEUE,
         },
         "app.api.modules.v1.scraping.service.tasks.process_extraction_stage2": {
-            "queue": "processing",
+            "queue": PROCESSING_QUEUE,
         },
         "app.api.modules.v1.scraping.service.tasks.persist_results_stage3": {
-            "queue": "persistence",
+            "queue": PERSISTENCE_QUEUE,
         },
         "app.api.modules.v1.scraping.service.tasks.dispatch_due_sources": {
-            "queue": "scraping",
+            "queue": SCRAPING_QUEUE,
         },
         "app.api.modules.v1.scraping.service.tasks.monitor_stalled_jobs": {
-            "queue": "scraping",
+            "queue": SCRAPING_QUEUE,
         },
         "app.api.modules.v1.scraping.service.tasks.retry_stuck_jobs": {
-            "queue": "scraping",
+            "queue": SCRAPING_QUEUE,
         },
         "app.api.modules.v1.scraping.service.tasks.detect_changes_and_notify_stage4": {
-            "queue": "processing",
+            "queue": PROCESSING_QUEUE,
         },
         "app.api.modules.v1.scraping.service.tasks.manual_scrape_source": {
-            "queue": "scraping",
+            "queue": SCRAPING_QUEUE,
         },
         "app.api.modules.v1.scraping.service.tasks.dispatch_due_jurisdictions": {
-            "queue": "processing",
+            "queue": PROCESSING_QUEUE,
         },
         "app.api.modules.v1.scraping.service.tasks.consolidate_jurisdiction_content": {
-            "queue": "processing",
+            "queue": PROCESSING_QUEUE,
         },
         "app.api.modules.v1.api_access.service.rotation_tasks.rotate_due_keys": {
-            "queue": "processing",
+            "queue": PROCESSING_QUEUE,
         },
         "send_revision_notifications": {
-            "queue": "processing",
+            "queue": PROCESSING_QUEUE,
         },
         "send_internal_user_notification": {
-            "queue": "processing",
+            "queue": PROCESSING_QUEUE,
         },
         "send_external_participant_notification": {
-            "queue": "processing",
+            "queue": PROCESSING_QUEUE,
         },
         # TODO: billing not yet implemented — uncomment when ready
         # "billing.tasks.expire_trials": {
-        #     "queue": "processing",
+        #     "queue": PROCESSING_QUEUE,
         # },
         # "billing.tasks.update_billing_status": {
-        #     "queue": "processing",
+        #     "queue": PROCESSING_QUEUE,
         # },
         # "billing.tasks.send_trial_reminders": {
-        #     "queue": "processing",
+        #     "queue": PROCESSING_QUEUE,
         # },
         "sitemap_rebuild_debounced": {
-            "queue": "processing",
+            "queue": PROCESSING_QUEUE,
         },
     },
 )

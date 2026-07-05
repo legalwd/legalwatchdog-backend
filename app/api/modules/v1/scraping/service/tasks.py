@@ -20,6 +20,7 @@ from sqlmodel import select
 
 from app.api.core.config import settings
 from app.api.core.custom_exceptions.exceptions import EmptyContentError, InvalidSourceError
+from app.api.core.queues import PROCESSING_QUEUE, SCRAPING_QUEUE
 from app.api.db.database import CeleryAsyncSessionLocal, SyncSessionLocal
 from app.api.modules.v1.jurisdictions.models.jurisdiction_model import Jurisdiction
 from app.api.modules.v1.scraping.models.jurisdiction_scrape_job import (
@@ -408,7 +409,7 @@ def detect_changes_and_notify_stage4(self, source_id: str, revision_id: str) -> 
 # ============================================================================
 
 
-@celery_app.task(bind=True, queue="processing", max_retries=1, default_retry_delay=30)
+@celery_app.task(bind=True, queue=PROCESSING_QUEUE, max_retries=1, default_retry_delay=30)
 def dispatch_single_jurisdiction_scrape(self, jurisdiction_id: str) -> dict:
     """Dispatch a scrape for a single jurisdiction through the batch pipeline."""
     logger.info("Dispatching single jurisdiction scrape for %s", jurisdiction_id)
@@ -547,7 +548,7 @@ def retry_stuck_jobs(self) -> str:
                 self.app.send_task(
                     "app.api.modules.v1.scraping.service.tasks.scrape_source_stage1",
                     args=[str(job.source_id), str(job.id)],
-                    queue="scraping",
+                    queue=SCRAPING_QUEUE,
                 )
                 count += 1
 
@@ -723,7 +724,7 @@ def dispatch_due_sources(self) -> str:
                 logger.error(f"Failed to release dispatch lock: {cleanup_err}")
 
 
-@celery_app.task(bind=True, queue="processing")
+@celery_app.task(bind=True, queue=PROCESSING_QUEUE)
 def dispatch_due_jurisdictions(self) -> str:
     """Query and dispatch due jurisdictions for batch scraping.
 
@@ -807,7 +808,7 @@ def dispatch_due_jurisdictions(self) -> str:
 
 @celery_app.task(
     bind=True,
-    queue="processing",
+    queue=PROCESSING_QUEUE,
     max_retries=3,
     default_retry_delay=60,
     acks_late=True,
@@ -973,7 +974,7 @@ def _dispatch_due_sources_sync(app) -> int:
                     app.send_task(
                         "app.api.modules.v1.scraping.service.tasks.scrape_source_stage1",
                         args=[str(src.id), str(matching_job.id)],
-                        queue="scraping",
+                        queue=SCRAPING_QUEUE,
                     )
                     total_dispatched += 1
                 else:
