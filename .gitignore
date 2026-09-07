@@ -29,6 +29,7 @@ ENV/
 .env
 
 # VSCode
+.vscode/
 .history/
 *.code-workspace
 
